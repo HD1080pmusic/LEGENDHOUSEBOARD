@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="House Board">
+<meta name="theme-color" content="#20242B">
+<title>The Legend House Board</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root{
+  --board-bg:#F6F5F0;
+  --board-bg2:#EFEEE8;
+  --frame:#20242B;
+  --frame2:#2C313B;
+  --ink:#20242B;
+  --ink-soft:#5B6270;
+  --line:#DBDAD3;
+  --card:#FFFFFF;
+  --blue:#2E5EAA;
+  --green:#2F9E62;
+  --pink:#D6447D;
+  --orange:#DB7E1B;
+  --purple:#7B4FB0;
+  --teal:#1C8C8C;
+  --danger:#C23B3B;
+  --shadow: 0 1px 2px rgba(32,36,43,.06), 0 4px 14px rgba(32,36,43,.07);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+button, .chip, .check, .cal-cell, .tab, .avatar{ touch-action:manipulation; }
+body{
+  margin:0;
+  background:var(--board-bg);
+  background-image: linear-gradient(var(--line) 1px, transparent 1px);
+  background-size: 100% 28px;
+  font-family:'Inter',sans-serif;
+  color:var(--ink);
+  min-height:100vh;
+}
+.app{max-width:880px;margin:0 auto;padding:18px 18px 60px;}
+
+.frame{
+  background:linear-gradient(135deg,var(--frame),var(--frame2));
+  border-radius:18px; padding:18px 22px; color:#fff;
+  box-shadow:var(--shadow); position:relative; overflow:hidden;
+}
+.frame::after{ content:""; position:absolute; inset:0;
+  background:radial-gradient(circle at 90% 0%, rgba(255,255,255,.06), transparent 60%); }
+.frame-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.frame-title{ font-family:'Kalam',cursive; font-weight:700; font-size:28px; letter-spacing:.3px; }
+.frame-date{font-size:13px;color:#C8CCD6;font-family:'JetBrains Mono',monospace;}
+.members-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center;}
+.who-pill{
+  margin-left:auto;font-size:12px;color:#C8CCD6;display:flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.08); padding:6px 10px; border-radius:20px; cursor:pointer;
+  border:1px solid rgba(255,255,255,.12);
+}
+.who-pill:hover{background:rgba(255,255,255,.14);}
+
+.bell-btn{
+  position:relative; cursor:pointer; font-size:18px; color:#fff;
+  padding:8px 10px; border-radius:10px; min-width:38px; min-height:38px;
+  display:inline-flex; align-items:center; justify-content:center;
+}
+.bell-btn:hover, .bell-btn:active{ background:rgba(255,255,255,.12); }
+.badge{
+  position:absolute; top:0; right:0; background:var(--danger); color:#fff;
+  font-size:10.5px; font-weight:700; border-radius:10px; padding:1px 5px; line-height:1.4;
+  font-family:'Inter',sans-serif; min-width:16px; text-align:center;
+}
+
+.avatar{
+  width:34px;height:34px;border-radius:50%; overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:13px;color:#fff;
+  border:2px solid rgba(255,255,255,.55); flex:none;
+}
+.avatar img{width:100%;height:100%;object-fit:cover;display:block;}
+.avatar.sm{width:24px;height:24px;font-size:10.5px;border-width:1.5px;}
+.avatar.add{background:rgba(255,255,255,.12);border:2px dashed rgba(255,255,255,.4);cursor:pointer;font-size:18px;}
+.members-row .avatar{cursor:pointer;}
+.name-tag{display:flex;align-items:center;gap:6px;font-size:13px;color:#E8E9ED;}
+
+.tabs{display:flex;gap:6px;margin:18px 0 16px;overflow-x:auto;padding-bottom:2px;}
+.tab{
+  font-family:'Kalam',cursive;font-weight:700;font-size:16px;
+  padding:11px 16px 9px;border-radius:10px 10px 4px 4px;min-height:42px;
+  background:var(--board-bg2);color:var(--ink-soft);
+  border:none;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap;
+}
+.tab.active{background:var(--card);color:var(--ink);box-shadow:var(--shadow);}
+
+.card{ background:var(--card);border-radius:14px;padding:16px 18px; box-shadow:var(--shadow); margin-bottom:14px; }
+.card h3{margin:0 0 10px;font-family:'Kalam',cursive;font-size:19px;font-weight:700;}
+.section-label{ font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase; color:var(--ink-soft);margin:22px 2px 8px; }
+.empty{color:var(--ink-soft);font-size:14px;padding:14px 4px;}
+
+.row{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line);}
+.row:last-child{border-bottom:none;}
+.row-main{flex:1;min-width:0;}
+.row-title{font-weight:600;font-size:14.5px;}
+.row-sub{font-size:12.5px;color:var(--ink-soft);margin-top:1px;}
+.tag{ font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px; background:var(--board-bg2);color:var(--ink-soft);white-space:nowrap; }
+.tag.birthday{background:#FCE8EF;color:var(--pink);}
+.tag.event{background:#E9F1FC;color:var(--blue);}
+.tag.overdue{background:#FBEAEA;color:var(--danger);}
+.tag.today{background:#FFF1DF;color:var(--orange);}
+
+button.btn{ font-family:'Inter',sans-serif;font-weight:600;font-size:13.5px;
+  background:var(--frame);color:#fff;border:none;border-radius:8px; padding:11px 16px;cursor:pointer;min-height:42px; }
+button.btn:hover{background:var(--frame2);}
+button.btn:active{background:var(--frame2);}
+button.btn.ghost{background:transparent;color:var(--ink-soft);border:1px solid var(--line);}
+button.btn.ghost:hover{background:var(--board-bg2);}
+button.btn.ghost:active{background:var(--board-bg2);}
+button.icon-btn{ background:none;border:none;cursor:pointer;color:var(--ink-soft);font-size:16px;padding:7px 9px;border-radius:8px;min-width:34px;min-height:34px;display:inline-flex;align-items:center;justify-content:center; }
+button.icon-btn:hover{background:var(--board-bg2);color:var(--ink);}
+button.icon-btn:active{background:var(--board-bg2);color:var(--ink);}
+
+input,select,textarea{ font-family:'Inter',sans-serif;font-size:16px; border:1px solid var(--line);border-radius:8px;padding:10px 11px; background:#fff;color:var(--ink); width:100%; }
+input:focus,select:focus,textarea:focus{outline:2px solid var(--blue);outline-offset:0;}
+.form-grid{display:grid;gap:10px;margin-bottom:10px;}
+.form-row{display:flex;gap:10px;flex-wrap:wrap;}
+.form-row > *{flex:1;min-width:120px;}
+label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:4px;}
+
+.chip-select{display:flex;gap:6px;flex-wrap:wrap;}
+.chip{ font-size:13px;padding:8px 13px;border-radius:20px;border:1.5px solid var(--line);
+  cursor:pointer;background:#fff;color:var(--ink-soft);user-select:none; }
+.chip.active{border-color:transparent;color:#fff;}
+.chip:active{opacity:.75;}
+
+.check{ width:24px;height:24px;border-radius:50%;border:2px solid var(--line);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;font-size:13px;color:#fff; }
+.check:active{transform:scale(0.9);}
+.check.done{background:var(--green);border-color:var(--green);}
+
+.balance-amt{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:14px;}
+.pos{color:var(--green);} .neg{color:var(--danger);}
+
+.note{ background:#FFFCEF;border:1px solid #F0E6BE;border-radius:10px; padding:12px 14px;margin-bottom:10px;position:relative; }
+.note.done{opacity:.55;}
+.note-msg{font-size:14px;}
+.note-meta{font-size:11.5px;color:var(--ink-soft);margin-top:6px;display:flex;justify-content:space-between;align-items:center;}
+
+.overlay{ position:fixed;inset:0;background:rgba(32,36,43,.55);
+  display:flex;align-items:center;justify-content:center;z-index:50;padding:18px; }
+.modal{ background:#fff;border-radius:16px;padding:22px;max-width:460px;width:100%;
+  box-shadow:0 20px 50px rgba(0,0,0,.3); max-height:88vh; overflow-y:auto; }
+.modal h3{font-family:'Kalam',cursive;font-size:21px;margin:0 0 14px;}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;}
+
+.loading-screen{ position:fixed;inset:0;background:var(--board-bg);display:flex;align-items:center;justify-content:center;
+  font-family:'Kalam',cursive;font-size:18px;color:var(--ink-soft);z-index:100; }
+
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.cal-title{font-family:'Kalam',cursive;font-weight:700;font-size:19px;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-dow{text-align:center;font-size:11px;font-weight:700;color:var(--ink-soft);padding-bottom:4px;}
+.cal-cell{min-height:54px;border-radius:8px;background:var(--board-bg2);padding:5px 4px;cursor:pointer;}
+.cal-cell.empty{background:transparent;cursor:default;}
+.cal-cell:hover:not(.empty){background:#E7E5DC;}
+.cal-cell.today{box-shadow:inset 0 0 0 2px var(--blue);}
+.cal-cell.selected{background:var(--frame);}
+.cal-cell.selected .cal-daynum{color:#fff;}
+.cal-daynum{font-size:12.5px;font-weight:600;}
+.cal-dots{display:flex;gap:2px;margin-top:4px;flex-wrap:wrap;}
+.cal-dot{width:6px;height:6px;border-radius:50%;background:var(--blue);}
+.cal-dot.birthday{background:var(--pink);}
+.error-text{color:var(--danger);font-size:12.5px;margin-top:8px;}
+
+@media (max-width:520px){
+  .frame-title{font-size:22px;}
+  .who-pill{margin-left:0;width:100%;justify-content:center;}
+  .cal-cell{min-height:40px;}
+}
+</style>
+</head>
+<body>
+
+<div id="loadingScreen" class="loading-screen">Setting the board up…</div>
+<input type="file" id="avatarFileInput" accept="image/*" style="display:none">
+
+<div class="app" id="app" style="display:none;">
+  <div class="frame">
+    <div class="frame-top">
+      <div class="frame-title">🏠 The Legend House Board</div>
+      <div class="frame-date" id="todayDate"></div>
+    </div>
+    <div class="members-row" id="membersRow"></div>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab" data-tab="calendar">Calendar</button>
+    <button class="tab" data-tab="dashboard">Dashboard</button>
+    <button class="tab" data-tab="chores">Chores</button>
+    <button class="tab" data-tab="reminders">Reminders</button>
+    <button class="tab" data-tab="bills">Bills</button>
+  </div>
+
+  <div id="content"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAzUJ7JtySLf-C5KJdjIygvJbRpKw-dfm0",
+  authDomain: "legend-house-board.firebaseapp.com",
+  projectId: "legend-house-board",
+  storageBucket: "legend-house-board.firebasestorage.app",
+  messagingSenderId: "182257921432",
+  appId: "1:182257921432:web:da72fe49163fb3874f4fed"
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const stateDocRef = doc(db, 'houseboard', 'state');
+
+const MARKER_COLORS = ['#2E5EAA','#2F9E62','#D6447D','#DB7E1B','#7B4FB0','#1C8C8C'];
+let state = { members: [], chores: [], events: [], reminders: [], expenses: [] };
+let currentUserId = null;
+let activeTab = 'calendar';
+let viewYear = new Date().getFullYear();
+let viewMonth = new Date().getMonth();
+let selectedCalDate = null;
+let pendingAvatarMemberId = null;
+let modalTurns = [[]];
+
+const uid = () => Math.random().toString(36).slice(2,10);
+const todayStr = () => new Date().toISOString().slice(0,10);
+const fmtDate = (d) => new Date(d+'T00:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'});
+const fmtDateFull = (d) => new Date(d+'T00:00:00').toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+const daysUntil = (dateStr, recurring) => {
+  const now = new Date(); now.setHours(0,0,0,0);
+  let target = new Date(dateStr+'T00:00:00');
+  if(recurring){ target.setFullYear(now.getFullYear()); if(target<now){ target.setFullYear(now.getFullYear()+1); } }
+  return Math.round((target-now)/86400000);
+};
+function memberById(id){ return state.members.find(m=>m.id===id); }
+function initials(name){ return name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function avatarHtml(member, sizeClass=''){
+  if(!member) return `<div class="avatar ${sizeClass}" style="background:#9AA0AC">?</div>`;
+  if(member.avatarData){
+    return `<div class="avatar ${sizeClass}" style="background:${member.color}"><img src="${member.avatarData}" alt="${escapeHtml(member.name)}"></div>`;
+  }
+  return `<div class="avatar ${sizeClass}" style="background:${member.color}">${initials(member.name)}</div>`;
+}
+
+async function loadState(){
+  try{
+    const snap = await getDoc(stateDocRef);
+    if(snap.exists() && snap.data().json){ state = JSON.parse(snap.data().json); }
+  } catch(e){ console.error('load failed', e); }
+}
+async function saveState(){
+  try{ await setDoc(stateDocRef, { json: JSON.stringify(state), updatedAt: Date.now() }); }
+  catch(e){ console.error('save failed', e); }
+}
+function startRealtimeSync(){
+  onSnapshot(stateDocRef, (snap)=>{
+    if(!snap.exists()) return;
+    const data = snap.data();
+    if(!data || !data.json) return;
+    try{
+      state = JSON.parse(data.json);
+      renderMembersRow();
+      render();
+    } catch(e){ console.error('sync parse failed', e); }
+  }, (err)=>{ console.error('sync error', err); });
+}
+
+/* ---------- avatar upload ---------- */
+function fileToResizedDataUrl(file, maxSize=140){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = e=>{
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = ()=>{
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width-side)/2, sy=(img.height-side)/2;
+        const canvas = document.createElement('canvas');
+        canvas.width = maxSize; canvas.height = maxSize;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, maxSize, maxSize);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ---------- INIT ---------- */
+async function init(){
+  selectedCalDate = todayStr();
+  await loadState();
+  if(!state.importedDefaultChores){
+    seedImportedChores();
+    state.importedDefaultChores = true;
+    await saveState();
+  }
+  if(!state.mergedFrontDoorTowel){
+    const fd = state.chores.find(c=>c.title==='Front door & shoe organization');
+    const tw = state.chores.find(c=>c.title==='Towel restock & laundry');
+    if(fd && tw){
+      fd.title = 'Front door & shoe organization + towel restock & laundry';
+      state.chores = state.chores.filter(c=>c.id!==tw.id);
+      await saveState();
+    }
+    state.mergedFrontDoorTowel = true;
+    await saveState();
+  }
+  document.getElementById('todayDate').textContent = new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+  document.getElementById('loadingScreen').style.display='none';
+  document.getElementById('app').style.display='block';
+
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.addEventListener('click', ()=>{ activeTab = t.dataset.tab; render(); });
+  });
+
+  document.getElementById('avatarFileInput').addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file || !pendingAvatarMemberId) return;
+    const dataUrl = await fileToResizedDataUrl(file);
+    const m = memberById(pendingAvatarMemberId);
+    if(m){ m.avatarData = dataUrl; await saveState(); renderMembersRow(); render(); }
+    e.target.value = '';
+  });
+
+  renderMembersRow();
+  if(state.members.length===0){ openMemberModal(true); }
+  else if(!currentUserId){ openWhoAreYou(); }
+  render();
+
+  startRealtimeSync();
+  maybeFireDeviceAlert();
+  setInterval(maybeFireDeviceAlert, 5*60*1000);
+}
+
+/* ---------- MEMBERS ---------- */
+function renderMembersRow(){
+  const row = document.getElementById('membersRow');
+  const notifs = getNotifications();
+  row.innerHTML = state.members.map(m=>`
+    <div class="name-tag" title="Click photo to add/change">
+      <span data-avatar-id="${m.id}">${avatarHtml(m)}</span>
+      ${escapeHtml(m.name)}
+    </div>
+  `).join('') + `<div class="avatar add" id="addMemberBtn" title="Add housemate">+</div>` +
+  `<div class="bell-btn" id="notifBell" title="Notifications">🔔${notifs.length>0?`<span class="badge">${notifs.length}</span>`:''}</div>` +
+  `<div class="who-pill" id="whoPill">You: ${currentUserId ? escapeHtml(memberById(currentUserId)?.name||'?') : 'choose'} ✎</div>`;
+  document.getElementById('addMemberBtn').onclick = ()=>openMemberModal(false);
+  document.getElementById('whoPill').onclick = openWhoAreYou;
+  document.getElementById('notifBell').onclick = openNotificationsModal;
+  row.querySelectorAll('[data-avatar-id]').forEach(el=>{
+    el.onclick = ()=>{ pendingAvatarMemberId = el.dataset.avatarId; document.getElementById('avatarFileInput').click(); };
+  });
+}
+
+/* ---------- IN-APP NOTIFICATIONS ----------
+   Important constraint: this board is a self-contained web page, not an installed iPhone
+   app, so it cannot push real notifications to a phone while the page is closed. What it
+   CAN do: surface "what changed" prominently whenever someone opens the board, track what
+   each person has already seen, and — only while the page happens to be open in a browser —
+   fire a best-effort on-device browser notification. */
+function getNotifications(){
+  if(!currentUserId) return [];
+  if(!state.notifSeen) state.notifSeen = {};
+  const seen = state.notifSeen[currentUserId] || { weekIndex:null, eventKeys:[] };
+  const notifs = [];
+  if(state.weeklyRotation){
+    const per = weeklyPlanPeriod(state.weeklyRotation);
+    if(seen.weekIndex === null || seen.weekIndex === undefined || seen.weekIndex < per.weekIndex){
+      notifs.push({ kind:'chore', id:`week-${per.weekIndex}`, weekIndex: per.weekIndex,
+        text:`Chores rotated for the week of ${fmtDate(per.periodStart)} — check who's up.` });
+    }
+  }
+  state.events.forEach(e=>{
+    const days = daysUntil(e.date, e.type==='birthday');
+    if(days>=0 && days<=3){
+      let occDate = e.date;
+      if(e.type==='birthday'){
+        const now = new Date(); now.setHours(0,0,0,0);
+        let t = new Date(e.date+'T00:00:00'); t.setFullYear(now.getFullYear());
+        if(t<now) t.setFullYear(now.getFullYear()+1);
+        occDate = isoDate(t);
+      }
+      const key = `${e.id}-${occDate}`;
+      if(!(seen.eventKeys||[]).includes(key)){
+        const when = days===0?'is today':days===1?'is tomorrow':`is in ${days} days`;
+        notifs.push({ kind:'event', id:key, eventKey:key, text:`${e.title} ${when}.` });
+      }
+    }
+  });
+  return notifs;
+}
+function markNotifSeen(n){
+  if(!currentUserId) return;
+  if(!state.notifSeen) state.notifSeen = {};
+  if(!state.notifSeen[currentUserId]) state.notifSeen[currentUserId] = { weekIndex:null, eventKeys:[] };
+  const rec = state.notifSeen[currentUserId];
+  if(n.kind==='chore'){ rec.weekIndex = n.weekIndex; }
+  else { rec.eventKeys = rec.eventKeys || []; if(!rec.eventKeys.includes(n.eventKey)) rec.eventKeys.push(n.eventKey); }
+}
+function openNotificationsModal(){
+  const notifs = getNotifications();
+  const wrap = document.createElement('div');
+  wrap.className='overlay';
+  wrap.innerHTML = `
+    <div class="modal">
+      <h3>What's new</h3>
+      ${notifs.length===0 ? `<div class="empty">You're all caught up.</div>` : notifs.map(n=>`
+        <div class="row">
+          <span class="tag ${n.kind==='chore'?'today':'event'}">${n.kind==='chore'?'🔄':'📅'}</span>
+          <div class="row-main row-sub">${escapeHtml(n.text)}</div>
+          <button class="icon-btn" data-ack="${n.id}">Got it</button>
+        </div>
+      `).join('')}
+      <p style="font-size:12px;color:var(--ink-soft);margin-top:14px;">This board can't send alerts to your phone while it's closed — that needs a real installed app. For the closest thing on iPhone: open this page in Safari, tap Share, then "Add to Home Screen" so it sits on your homescreen like an app. While this tab is open, you can also turn on best-effort on-device alerts below.</p>
+      <div id="notifPermRow" style="margin-top:10px;"></div>
+      <div class="modal-actions">
+        ${notifs.length>0?`<button class="btn ghost" id="ackAll">Mark all as read</button>`:''}
+        <button class="btn" id="closeNotif">Close</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+
+  const permRow = wrap.querySelector('#notifPermRow');
+  function renderPermRow(){
+    if(typeof Notification === 'undefined'){
+      permRow.innerHTML = `<p style="font-size:12px;color:var(--ink-soft);">This browser doesn't support on-device alerts.</p>`;
+    } else if(Notification.permission === 'granted'){
+      permRow.innerHTML = `<p style="font-size:12.5px;color:var(--green);">✓ On-device alerts are on for this browser.</p>`;
+    } else if(Notification.permission === 'denied'){
+      permRow.innerHTML = `<p style="font-size:12px;color:var(--ink-soft);">Alerts are blocked for this site in your browser settings.</p>`;
+    } else {
+      permRow.innerHTML = `<button class="btn ghost" id="enableNotifBtn">Enable on-device alerts</button>`;
+      permRow.querySelector('#enableNotifBtn').onclick = ()=>{
+        Notification.requestPermission().then(renderPermRow);
+      };
+    }
+  }
+  renderPermRow();
+
+  wrap.querySelector('#closeNotif').onclick = ()=>{ document.body.removeChild(wrap); renderMembersRow(); };
+  const ackAllBtn = wrap.querySelector('#ackAll');
+  if(ackAllBtn) ackAllBtn.onclick = ()=>{
+    notifs.forEach(markNotifSeen);
+    saveState();
+    document.body.removeChild(wrap);
+    renderMembersRow();
+  };
+  wrap.querySelectorAll('[data-ack]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const n = notifs.find(x=>x.id===btn.dataset.ack);
+      if(n) markNotifSeen(n);
+      saveState();
+      btn.closest('.row').remove();
+      renderMembersRow();
+    };
+  });
+}
+
+/* Best-effort on-device alert — only fires if this tab happens to be open at the time,
+   and only on the device where alerts were enabled. Not a substitute for real push. */
+function maybeFireDeviceAlert(){
+  if(typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  if(!state.weeklyRotation) return;
+  const now = new Date();
+  if(now.getDay() !== 0 || now.getHours() < 12) return; // Sunday, after 12:00
+  let lastFired = null;
+  try{ lastFired = localStorage.getItem('house-board-last-alert'); }catch(e){}
+  if(lastFired === todayStr()) return;
+  new Notification('The Legend House Board', { body: "It's Sunday — chores have rotated for the new week." });
+  try{ localStorage.setItem('house-board-last-alert', todayStr()); }catch(e){}
+}
+function openMemberModal(isFirst){
+  const wrap = document.createElement('div');
+  wrap.className='overlay';
+  wrap.innerHTML = `
+    <div class="modal">
+      <h3>${isFirst? "Who's in the house?" : "Add a housemate"}</h3>
+      ${isFirst? `<p style="font-size:13px;color:var(--ink-soft);margin-top:-6px;">Add everyone living here. This board is shared — anyone with this link sees the same data.</p>`:''}
+      <div class="form-grid">
+        <div><label>Name</label><input id="memberName" placeholder="e.g. Sam" autofocus></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="cancelMember">${isFirst?'Skip':'Cancel'}</button>
+        <button class="btn" id="saveMember">Add</button>
+        ${isFirst? `<button class="btn" id="doneMember" style="display:none;">Done adding</button>`:''}
+      </div>
+      ${isFirst? `<div id="addedList" style="margin-top:12px;font-size:13px;color:var(--ink-soft);"></div>`:''}
+    </div>`;
+  document.body.appendChild(wrap);
+  const nameInput = wrap.querySelector('#memberName');
+  const addedList = wrap.querySelector('#addedList');
+
+  function addMember(){
+    const name = nameInput.value.trim();
+    if(!name) return;
+    const color = MARKER_COLORS[state.members.length % MARKER_COLORS.length];
+    state.members.push({id:uid(), name, color, avatarData:null});
+    saveState(); renderMembersRow();
+    nameInput.value='';
+    if(isFirst){
+      addedList.innerHTML = 'Added: ' + state.members.map(mm=>escapeHtml(mm.name)).join(', ');
+      wrap.querySelector('#doneMember').style.display='inline-block';
+      nameInput.focus();
+    } else {
+      document.body.removeChild(wrap);
+      if(!currentUserId) openWhoAreYou();
+    }
+    render();
+  }
+  wrap.querySelector('#saveMember').onclick = addMember;
+  nameInput.addEventListener('keydown', e=>{ if(e.key==='Enter') addMember(); });
+  wrap.querySelector('#cancelMember').onclick = ()=> document.body.removeChild(wrap);
+  if(isFirst){
+    wrap.querySelector('#doneMember').onclick = ()=>{ document.body.removeChild(wrap); openWhoAreYou(); };
+  }
+}
+
+function openWhoAreYou(){
+  const wrap = document.createElement('div');
+  wrap.className='overlay';
+  wrap.innerHTML = `
+    <div class="modal">
+      <h3>Which housemate are you?</h3>
+      <p style="font-size:13px;color:var(--ink-soft);margin-top:-6px;">This just personalizes the dashboard and reminders for this session.</p>
+      <div class="chip-select" id="whoChips" style="margin-top:10px;"></div>
+      <div class="modal-actions"><button class="btn ghost" id="whoSkip">Skip for now</button></div>
+    </div>`;
+  document.body.appendChild(wrap);
+  const chips = wrap.querySelector('#whoChips');
+  chips.innerHTML = state.members.map(m=>`<div class="chip" data-id="${m.id}" style="border-color:${m.color}">${escapeHtml(m.name)}</div>`).join('');
+  chips.querySelectorAll('.chip').forEach(c=>{
+    c.onclick = ()=>{ currentUserId = c.dataset.id; document.body.removeChild(wrap); renderMembersRow(); render(); };
+  });
+  wrap.querySelector('#whoSkip').onclick = ()=> document.body.removeChild(wrap);
+}
+
+/* ---------- RENDER ROUTER ---------- */
+function render(){
+  document.querySelectorAll('.tab').forEach(t=> t.classList.toggle('active', t.dataset.tab===activeTab));
+  const c = document.getElementById('content');
+  if(activeTab==='dashboard') c.innerHTML = renderDashboard();
+  else if(activeTab==='chores') c.innerHTML = renderChores();
+  else if(activeTab==='calendar') c.innerHTML = renderCalendar();
+  else if(activeTab==='reminders') c.innerHTML = renderReminders();
+  else if(activeTab==='bills') c.innerHTML = renderBills();
+  attachHandlers();
+  renderMembersRow();
+}
+
+/* ---------- CHORE HELPERS (fixed + rotating) ---------- */
+function weeksBetween(a,b){
+  const ms = new Date(b+'T00:00:00') - new Date(a+'T00:00:00');
+  return Math.floor(ms/(7*86400000));
+}
+function isoDate(d){ return d.toISOString().slice(0,10); }
+function getNextWeekday(targetDow){
+  const d = new Date(); d.setHours(0,0,0,0);
+  const diff = (targetDow - d.getDay() + 7) % 7;
+  d.setDate(d.getDate() + diff);
+  return isoDate(d);
+}
+function seedImportedChores(){
+  const today = todayStr();
+  state.chores.push(
+    { id:uid(), type:'rotating', title:'Empty dish dryer (daily, in pairs)',
+      rotation:{ intervalWeeks:1, anchorDate: today, turns:[] }, doneForPeriod:null },
+    { id:uid(), type:'rotating', title:'Empty trash & take out bins (Thursday night, in pairs)',
+      rotation:{ intervalWeeks:1, anchorDate: getNextWeekday(4), turns:[] }, doneForPeriod:null },
+    { id:uid(), type:'fixed', title:'Clean air fryer & microwave', assignee:null, frequency:'weekly', dueDate: today, done:false },
+    { id:uid(), type:'fixed', title:'Front door & shoe organization + towel restock & laundry', assignee:null, frequency:'weekly', dueDate: today, done:false }
+  );
+}
+function rotationStatus(ch){
+  const r = ch.rotation;
+  if(!r.turns || r.turns.length===0){
+    return { periodIndex:0, cycleNumber:0, turnMembers:[], periodStart:todayStr(), periodEnd:todayStr(), needsSetup:true };
+  }
+  const weeksSince = weeksBetween(r.anchorDate, todayStr());
+  const totalWeeksPerCycle = r.intervalWeeks * r.turns.length;
+  const safeWeeksSince = Math.max(weeksSince, 0);
+  const cycleNumber = Math.floor(safeWeeksSince / totalWeeksPerCycle);
+  const cyclePos = safeWeeksSince % totalWeeksPerCycle;
+  const periodIndex = Math.floor(cyclePos / r.intervalWeeks);
+  const periodStartWeeks = cycleNumber*totalWeeksPerCycle + periodIndex*r.intervalWeeks;
+  const periodStart = new Date(r.anchorDate+'T00:00:00');
+  periodStart.setDate(periodStart.getDate() + periodStartWeeks*7);
+  const periodEnd = new Date(periodStart); periodEnd.setDate(periodEnd.getDate() + r.intervalWeeks*7 - 1);
+  return { periodIndex, cycleNumber, turnMembers: r.turns[periodIndex] || [], periodStart: isoDate(periodStart), periodEnd: isoDate(periodEnd) };
+}
+function weeklyPlanWeekIndex(plan){
+  const w = weeksBetween(plan.anchorDate, todayStr());
+  return Math.max(w, 0);
+}
+function weeklyPlanPeriod(plan){
+  const w = weeklyPlanWeekIndex(plan);
+  const start = new Date(plan.anchorDate+'T00:00:00'); start.setDate(start.getDate()+w*7);
+  const end = new Date(start); end.setDate(end.getDate()+6);
+  return { weekIndex:w, periodStart: isoDate(start), periodEnd: isoDate(end) };
+}
+function weeklyPlanSlice(plan, roleIdx){
+  const N = plan.order.length;
+  if(N===0) return [];
+  const w = weeklyPlanWeekIndex(plan);
+  const shift = w % N;
+  const rotated = plan.order.slice(shift).concat(plan.order.slice(0, shift));
+  let offset = 0;
+  for(let i=0;i<roleIdx;i++) offset += plan.roles[i].slots;
+  return rotated.slice(offset, offset + plan.roles[roleIdx].slots);
+}
+function isChoreDone(ch){
+  if(ch.type==='linked'){
+    const plan = state.weeklyRotation; if(!plan) return false;
+    return ch.doneForWeek === weeklyPlanPeriod(plan).weekIndex;
+  }
+  if(ch.type==='rotating'){ const st = rotationStatus(ch); if(st.needsSetup) return false; return ch.doneForPeriod === `${st.cycleNumber}-${st.periodIndex}`; }
+  return ch.done;
+}
+function effectiveDate(ch){
+  if(ch.type==='linked'){ const plan = state.weeklyRotation; if(!plan) return '9999-12-31'; return weeklyPlanPeriod(plan).periodEnd; }
+  if(ch.type==='rotating'){ return rotationStatus(ch).periodEnd; }
+  return ch.dueDate || '9999-12-31';
+}
+function isDueNow(ch){
+  if(isChoreDone(ch)) return false;
+  if(ch.type==='linked'){ return !!state.weeklyRotation; }
+  if(ch.type==='rotating'){ const st = rotationStatus(ch); if(st.needsSetup) return true; return st.periodStart <= todayStr(); }
+  return ch.dueDate && ch.dueDate <= todayStr();
+}
+function choreRow(ch){
+  const done = isChoreDone(ch);
+  const eff = effectiveDate(ch);
+  const overdue = !done && eff < todayStr();
+  if(ch.type==='linked'){
+    const plan = state.weeklyRotation;
+    if(!plan){
+      return `
+      <div class="row">
+        <div class="check" style="opacity:.3;cursor:default;"></div>
+        <div class="avatar sm" style="background:#9AA0AC">?</div>
+        <div class="row-main"><div class="row-title">${escapeHtml(ch.title)}</div><div class="row-sub">Part of the weekly rotation — open "Edit weekly rotation" to set it up</div></div>
+        <span class="tag today">Set up</span>
+        <button class="icon-btn" data-action="edit-chore" data-id="${ch.id}">✎</button>
+        <button class="icon-btn" data-action="delete-chore" data-id="${ch.id}">✕</button>
+      </div>`;
+    }
+    const roleIdx = plan.roles.findIndex(r=>r.choreId===ch.id);
+    const members = roleIdx>=0 ? weeklyPlanSlice(plan, roleIdx) : [];
+    const avatarsHtml = members.map(id=>avatarHtml(memberById(id),'sm')).join('');
+    const names = members.map(id=>memberById(id)?.name||'?').join(' & ');
+    return `
+    <div class="row">
+      <div class="check ${done?'done':''}" data-action="toggle-chore" data-id="${ch.id}">${done?'✓':''}</div>
+      <div style="display:flex;gap:2px;">${avatarsHtml}</div>
+      <div class="row-main">
+        <div class="row-title">${escapeHtml(ch.title)}</div>
+        <div class="row-sub">${escapeHtml(names)} · this week · weekly rotation</div>
+      </div>
+      <span class="tag ${overdue?'overdue':(eff===todayStr()?'today':'')}">${fmtDate(eff)}</span>
+      <button class="icon-btn" data-action="edit-chore" data-id="${ch.id}">✎</button>
+      <button class="icon-btn" data-action="delete-chore" data-id="${ch.id}">✕</button>
+    </div>`;
+  }
+  if(ch.type==='rotating'){
+    const st = rotationStatus(ch);
+    if(st.needsSetup){
+      return `
+      <div class="row">
+        <div class="check" style="opacity:.3;cursor:default;"></div>
+        <div class="avatar sm" style="background:#9AA0AC">?</div>
+        <div class="row-main">
+          <div class="row-title">${escapeHtml(ch.title)}</div>
+          <div class="row-sub">Rotates every ${ch.rotation.intervalWeeks===1?'week':ch.rotation.intervalWeeks+' wks'} · housemates not set yet</div>
+        </div>
+        <span class="tag today">Set up</span>
+        <button class="icon-btn" data-action="edit-chore" data-id="${ch.id}">✎</button>
+        <button class="icon-btn" data-action="delete-chore" data-id="${ch.id}">✕</button>
+      </div>`;
+    }
+    const avatarsHtml = st.turnMembers.map(id=>avatarHtml(memberById(id),'sm')).join('');
+    const names = st.turnMembers.map(id=>memberById(id)?.name||'?').join(' & ');
+    const subtitle = `${names} · every ${ch.rotation.intervalWeeks===1?'week':ch.rotation.intervalWeeks+' wks'}`;
+    return `
+    <div class="row">
+      <div class="check ${done?'done':''}" data-action="toggle-chore" data-id="${ch.id}">${done?'✓':''}</div>
+      <div style="display:flex;gap:2px;">${avatarsHtml}</div>
+      <div class="row-main">
+        <div class="row-title">${escapeHtml(ch.title)}</div>
+        <div class="row-sub">${subtitle}</div>
+      </div>
+      <span class="tag ${overdue?'overdue':(eff===todayStr()?'today':'')}">${fmtDate(eff)}</span>
+      <button class="icon-btn" data-action="edit-chore" data-id="${ch.id}">✎</button>
+      <button class="icon-btn" data-action="delete-chore" data-id="${ch.id}">✕</button>
+    </div>`;
+  }
+  const assignee = memberById(ch.assignee);
+  return `
+  <div class="row">
+    <div class="check ${done?'done':''}" data-action="toggle-chore" data-id="${ch.id}">${done?'✓':''}</div>
+    ${avatarHtml(assignee,'sm')}
+    <div class="row-main">
+      <div class="row-title">${escapeHtml(ch.title)}</div>
+      <div class="row-sub">${assignee?escapeHtml(assignee.name):'Unassigned'} · ${ch.frequency}</div>
+    </div>
+    <span class="tag ${overdue?'overdue':(eff===todayStr()?'today':'')}">${fmtDate(eff)}</span>
+    <button class="icon-btn" data-action="edit-chore" data-id="${ch.id}">✎</button>
+    <button class="icon-btn" data-action="delete-chore" data-id="${ch.id}">✕</button>
+  </div>`;
+}
+
+/* ---------- DASHBOARD ---------- */
+function renderDashboard(){
+  const dueChores = state.chores.filter(isDueNow).sort((a,b)=>effectiveDate(a).localeCompare(effectiveDate(b)));
+  const upcomingEvents = state.events
+    .map(e=>({...e, _days: daysUntil(e.date, e.type==='birthday')}))
+    .filter(e=> e._days>=0 && e._days<=14)
+    .sort((a,b)=>a._days-b._days);
+  const myReminders = state.reminders.filter(r=> !r.done && (r.to===currentUserId || r.to==='everyone'));
+  const balances = computeBalances();
+  const myBalance = currentUserId ? (balances[currentUserId]||0) : null;
+
+  return `
+    <div class="card">
+      <h3>Today at a glance</h3>
+      ${dueChores.length===0 && upcomingEvents.length===0 && myReminders.length===0 ? `<div class="empty">Nothing urgent — nice and quiet on the board.</div>` : ''}
+      ${dueChores.length>0 ? `<div class="section-label" style="margin-top:4px;">Chores needing attention</div>${dueChores.slice(0,6).map(choreRow).join('')}`:''}
+      ${myReminders.length>0 ? `<div class="section-label">Reminders for you</div>${myReminders.slice(0,4).map(reminderNote).join('')}`:''}
+      ${upcomingEvents.length>0 ? `<div class="section-label">Coming up</div>${upcomingEvents.slice(0,5).map(eventRow).join('')}`:''}
+    </div>
+    ${currentUserId ? `
+    <div class="card">
+      <h3>Your balance</h3>
+      <div style="font-size:14px;">
+        ${myBalance===null ? '' : myBalance>0.005
+          ? `You're owed <span class="balance-amt pos">$${myBalance.toFixed(2)}</span> overall.`
+          : myBalance<-0.005
+          ? `You owe <span class="balance-amt neg">$${Math.abs(myBalance).toFixed(2)}</span> overall.`
+          : `You're all settled up. 🎉`}
+      </div>
+    </div>`:''}
+  `;
+}
+
+function eventRow(e){
+  const days = e._days!==undefined? e._days : daysUntil(e.date, e.type==='birthday');
+  const label = days===0?'Today':days===1?'Tomorrow':(days>=0?`in ${days}d`:'');
+  return `
+  <div class="row">
+    <span class="tag ${e.type}">${e.type==='birthday'?'🎂':'📌'}</span>
+    <div class="row-main">
+      <div class="row-title">${escapeHtml(e.title)}</div>
+      <div class="row-sub">${fmtDate(e.date)}${label?' · '+label:''}</div>
+    </div>
+    <button class="icon-btn" data-action="delete-event" data-id="${e.id}">✕</button>
+  </div>`;
+}
+function reminderNote(r){
+  const from = memberById(r.from);
+  const to = r.to==='everyone' ? 'Everyone' : (memberById(r.to)?.name || '?');
+  return `
+  <div class="note ${r.done?'done':''}">
+    <div class="note-msg">${escapeHtml(r.message)}</div>
+    <div class="note-meta">
+      <span>${from?escapeHtml(from.name):'?'} → ${escapeHtml(to)}</span>
+      <span>
+        <button class="icon-btn" data-action="toggle-reminder" data-id="${r.id}">${r.done?'↺':'✓ done'}</button>
+        <button class="icon-btn" data-action="delete-reminder" data-id="${r.id}">✕</button>
+      </span>
+    </div>
+  </div>`;
+}
+
+/* ---------- CHORES TAB ---------- */
+function renderChores(){
+  const sorted = [...state.chores].sort((a,b)=>{
+    const da = isChoreDone(a), db = isChoreDone(b);
+    if(da!==db) return da?1:-1;
+    return effectiveDate(a).localeCompare(effectiveDate(b));
+  });
+  return `
+    <div class="card">
+      <h3>Chores</h3>
+      <p style="font-size:13px;color:var(--ink-soft);margin:-4px 0 10px;">Set chores to a fixed person and schedule, have them rotate on their own, or link several together into one weekly rotation so nobody ever does two chores in the same week.</p>
+      <button class="btn" data-action="open-chore-modal">+ Add a chore</button>
+      <button class="btn ghost" data-action="open-weekly-rotation" style="margin-left:8px;">${state.weeklyRotation?'Edit weekly rotation':'Set up weekly rotation (no overlaps)'}</button>
+    </div>
+    <div class="card">
+      <h3>All chores</h3>
+      ${sorted.length===0?`<div class="empty">No chores yet — add one above.</div>`:sorted.map(choreRow).join('')}
+    </div>
+  `;
+}
+
+function openChoreModal(existing){
+  if(existing && existing.type==='linked'){ openLinkedChoreModal(existing); return; }
+  const isEdit = !!existing;
+  const wrap = document.createElement('div');
+  wrap.className='overlay';
+  wrap.innerHTML = `
+    <div class="modal">
+      <h3>${isEdit?'Edit chore':'Add a chore'}</h3>
+      <div class="form-grid">
+        <div><label>Chore</label><input id="mTitle" placeholder="e.g. Vacuum living room" value="${isEdit?escapeHtml(existing.title):''}"></div>
+        <div><label>Type</label>
+          <select id="mType">
+            <option value="fixed" ${isEdit && existing.type==='fixed'?'selected':''}>One person, set schedule</option>
+            <option value="rotating" ${isEdit && existing.type==='rotating'?'selected':''}>Rotates between housemates</option>
+          </select>
+        </div>
+      </div>
+      <div id="fixedFields">
+        <div class="form-row">
+          <div><label>Assign to</label>
+            <select id="mAssignee"><option value="">Unassigned</option>${state.members.map(m=>`<option value="${m.id}" ${isEdit && existing.type==='fixed' && existing.assignee===m.id?'selected':''}>${escapeHtml(m.name)}</option>`).join('')}</select>
+          </div>
+          <div><label>Frequency</label>
+            <select id="mFrequency">
+              <option value="one-time" ${isEdit && existing.frequency==='one-time'?'selected':''}>One-time</option>
+              <option value="daily" ${isEdit && existing.frequency==='daily'?'selected':''}>Daily</option>
+              <option value="weekly" ${isEdit && existing.frequency==='weekly'?'selected':''}>Weekly</option>
+              <option value="monthly" ${isEdit && existing.frequency==='monthly'?'selected':''}>Monthly</option>
+            </select>
+          </div>
+          <div><label>Due date</label><input id="mDue" type="date" value="${isEdit && existing.type==='fixed' ? existing.dueDate : todayStr()}"></div>
+        </div>
+      </div>
+      <div id="rotatingFields" style="display:none;">
+        <div class="form-row">
+          <div><label>Repeats every</label>
+            <select id="mInterval">
+              <option value="1" ${isEdit && existing.type==='rotating' && existing.rotation.intervalWeeks===1?'selected':''}>1 week</option>
+              <option value="2" ${isEdit && existing.type==='rotating' && existing.rotation.intervalWeeks===2?'selected':''}>2 weeks</option>
+              <option value="3" ${isEdit && existing.type==='rotating' && existing.rotation.intervalWeeks===3?'selected':''}>3 weeks</option>
+              <option value="4" ${isEdit && existing.type==='rotating' && existing.rotation.intervalWeeks===4?'selected':''}>4 weeks</option>
+            </select>
+          </div>
+          <div><label>Starting</label><input id="mAnchor" type="date" value="${isEdit && existing.type==='rotating' ? existing.rotation.anchorDate : todayStr()}"></div>
+        </div>
+        <label style="margin-top:6px;">Turn order — this is the order housemates take the chore, on repeat</label>
+        <div id="turnsContainer"></div>
+        <button class="btn ghost" id="addTurnBtn" style="margin-top:2px;">+ Add turn</button>
+        <p style="font-size:12px;color:var(--ink-soft);margin-top:8px;">Each turn lasts one interval, then it moves to the next. Use ↑ / ↓ to reorder. Leave someone out of every turn to exclude them. Put more than one person in a turn to assign that turn to a group together.</p>
+        <div class="section-label" style="margin-top:14px;">Schedule preview</div>
+        <div id="turnPreview"></div>
+      </div>
+      <div id="choreError" class="error-text" style="display:none;"></div>
+      <div class="modal-actions">
+        ${isEdit?`<button class="btn ghost" id="deleteChoreBtn" style="color:var(--danger);border-color:var(--danger);">Delete</button>`:''}
+        <button class="btn ghost" id="cancelChore">Cancel</button>
+        <button class="btn" id="saveChore">${isEdit?'Save changes':'Add chore'}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+
+  modalTurns = (isEdit && existing.type==='rotating') ? existing.rotation.turns.map(t=>[...t]) : [[]];
+
+  function renderPreview(){
+    const previewEl = wrap.querySelector('#turnPreview');
+    const turns = modalTurns.filter(t=>t.length>0);
+    if(turns.length===0){ previewEl.innerHTML = `<div class="empty" style="padding:6px 4px;">Add people to a turn to preview the schedule.</div>`; return; }
+    const intervalWeeks = parseInt(wrap.querySelector('#mInterval').value,10);
+    const anchor = wrap.querySelector('#mAnchor').value || todayStr();
+    let rows = '';
+    for(let i=0;i<Math.min(turns.length,6);i++){
+      const start = new Date(anchor+'T00:00:00'); start.setDate(start.getDate()+i*intervalWeeks*7);
+      const end = new Date(start); end.setDate(end.getDate()+intervalWeeks*7-1);
+      const names = turns[i].map(id=>memberById(id)?.name||'?').join(' & ');
+      rows += `<div class="row" style="padding:6px 2px;">
+        <span class="tag event">${fmtDate(isoDate(start))}–${fmtDate(isoDate(end))}</span>
+        <div class="row-main row-sub">${escapeHtml(names)}</div>
+      </div>`;
+    }
+    previewEl.innerHTML = rows + `<div style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;">Then repeats from turn 1 again.</div>`;
+  }
+
+  function renderTurns(){
+    const cont = wrap.querySelector('#turnsContainer');
+    cont.innerHTML = modalTurns.map((turn,i)=>`
+      ${i>0?`<div style="text-align:center;color:var(--ink-soft);font-size:12px;margin:-2px 0 4px;">↓ then</div>`:''}
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+        <span style="font-size:12px;font-weight:700;color:var(--ink);width:54px;flex:none;">Turn ${i+1}</span>
+        <div class="chip-select" style="flex:1;">
+          ${state.members.map(m=>`<div class="chip turn-chip ${turn.includes(m.id)?'active':''}" data-turn="${i}" data-id="${m.id}" style="${turn.includes(m.id)?`background:${m.color};border-color:${m.color}`:''}">${escapeHtml(m.name)}</div>`).join('')}
+        </div>
+        <button class="icon-btn" data-moveup="${i}" ${i===0?'disabled':''} style="${i===0?'opacity:.25;cursor:default;':''}">↑</button>
+        <button class="icon-btn" data-movedown="${i}" ${i===modalTurns.length-1?'disabled':''} style="${i===modalTurns.length-1?'opacity:.25;cursor:default;':''}">↓</button>
+        ${modalTurns.length>1?`<button class="icon-btn" data-removeturn="${i}">✕</button>`:''}
+      </div>
+    `).join('');
+    cont.querySelectorAll('.turn-chip').forEach(chip=>{
+      chip.onclick = ()=>{
+        const ti = +chip.dataset.turn, mid = chip.dataset.id;
+        const turn = modalTurns[ti];
+        const idx = turn.indexOf(mid);
+        if(idx>=0) turn.splice(idx,1); else turn.push(mid);
+        renderTurns();
+      };
+    });
+    cont.querySelectorAll('[data-moveup]:not([disabled])').forEach(btn=>{
+      btn.onclick = ()=>{ const i=+btn.dataset.moveup; [modalTurns[i-1],modalTurns[i]]=[modalTurns[i],modalTurns[i-1]]; renderTurns(); };
+    });
+    cont.querySelectorAll('[data-movedown]:not([disabled])').forEach(btn=>{
+      btn.onclick = ()=>{ const i=+btn.dataset.movedown; [modalTurns[i+1],modalTurns[i]]=[modalTurns[i],modalTurns[i+1]]; renderTurns(); };
+    });
+    cont.querySelectorAll('[data-removeturn]').forEach(btn=>{
+      btn.onclick = ()=>{ modalTurns.splice(+btn.dataset.removeturn,1); renderTurns(); };
+    });
+    renderPreview();
+  }
+  renderTurns();
+  wrap.querySelector('#addTurnBtn').onclick = ()=>{ modalTurns.push([]); renderTurns(); };
+  wrap.querySelector('#mInterval').addEventListener('change', renderPreview);
+  wrap.querySelector('#mAnchor').addEventListener('change', renderPreview);
+
+  const rotatingInitially = isEdit ? existing.type==='rotating' : false;
+  wrap.querySelector('#fixedFields').style.display = rotatingInitially?'none':'block';
+  wrap.querySelector('#rotatingFields').style.display = rotatingInitially?'block':'none';
+  wrap.querySelector('#mType').onchange = (e)=>{
+    const rotating = e.target.value==='rotating';
+    wrap.querySelector('#fixedFields').style.display = rotating?'none':'block';
+    wrap.querySelector('#rotatingFields').style.display = rotating?'block':'none';
+  };
+
+  function showError(msg){ const el = wrap.querySelector('#choreError'); el.textContent = msg; el.style.display='block'; }
+
+  wrap.querySelector('#cancelChore').onclick = ()=> document.body.removeChild(wrap);
+  if(isEdit){
+    wrap.querySelector('#deleteChoreBtn').onclick = ()=>{
+      state.chores = state.chores.filter(x=>x.id!==existing.id);
+      saveState(); document.body.removeChild(wrap); render();
+    };
+  }
+  wrap.querySelector('#saveChore').onclick = ()=>{
+    const title = wrap.querySelector('#mTitle').value.trim();
+    if(!title){ showError('Give the chore a name.'); return; }
+    const type = wrap.querySelector('#mType').value;
+    let built;
+    if(type==='fixed'){
+      built = {
+        type:'fixed', title,
+        assignee: wrap.querySelector('#mAssignee').value || null,
+        frequency: wrap.querySelector('#mFrequency').value,
+        dueDate: wrap.querySelector('#mDue').value || todayStr(),
+        done: (isEdit && existing.type==='fixed') ? existing.done : false
+      };
+    } else {
+      const turns = modalTurns.filter(t=>t.length>0);
+      if(turns.length===0){ showError('Add at least one person to at least one turn.'); return; }
+      built = {
+        type:'rotating', title,
+        rotation:{ intervalWeeks: parseInt(wrap.querySelector('#mInterval').value,10), anchorDate: wrap.querySelector('#mAnchor').value || todayStr(), turns },
+        doneForPeriod: (isEdit && existing.type==='rotating') ? existing.doneForPeriod : null
+      };
+    }
+    if(isEdit){
+      built.id = existing.id;
+      const idx = state.chores.findIndex(x=>x.id===existing.id);
+      state.chores[idx] = built;
+    } else {
+      built.id = uid();
+      state.chores.push(built);
+    }
+    saveState();
+    document.body.removeChild(wrap);
+    render();
+  };
+}
+
+function openLinkedChoreModal(existing){
+  const wrap = document.createElement('div');
+  wrap.className='overlay';
+  wrap.innerHTML = `
+    <div class="modal">
+      <h3>Edit chore</h3>
+      <div class="form-grid"><div><label>Chore</label><input id="mTitle" value="${escapeHtml(existing.title)}"></div></div>
+      <p style="font-size:13px;color:var(--ink-soft);">This chore is part of your <b>weekly rotation</b>, so who's on it each week — and in what order — is managed from "Edit weekly rotation" on the Chores tab.</p>
+      <div id="choreError" class="error-text" style="display:none;"></div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="unlinkBtn" style="color:var(--danger);border-color:var(--danger);">Remove from rotation</button>
+        <button class="btn ghost" id="cancelChore">Cancel</button>
+        <button class="btn" id="saveChore">Save changes</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('#cancelChore').onclick = ()=> document.body.removeChild(wrap);
+  wrap.querySelector('#saveChore').onclick = ()=>{
+    const title = wrap.querySelector('#mTitle').value.trim();
+    if(!title){ const el=wrap.querySelector('#choreError'); el.textContent='Give the chore a name.'; el.style.display='block'; return; }
+    existing.title = title;
+    saveState(); document.body.removeChild(wrap); render();
+  };
+  wrap.querySelector('#unlinkBtn').onclick = ()=>{
+    if(state.weeklyRotation){
+      state.weeklyRotation.roles = state.weeklyRotation.roles.filter(r=>r.choreId!==existing.id);
+      if(state.weeklyRotation.roles.length===0) state.weeklyRotation = null;
+    }
+    existing.type = 'rotating';
+    existing.rotation = { intervalWeeks:1, anchorDate: todayStr(), turns:[] };
+    existing.doneForPeriod = null;
+    delete existing.doneForWeek;
+    saveState(); document.body.removeChild(wrap); render();
+  };
+}
+
+let weeklyOrder = [];
+let weeklyRoles = [];
+
+function openWeeklyRotationModal(){
+  const plan = state.weeklyRotation;
+  weeklyOrder = plan ? [...plan.order] : state.members.map(m=>m.id);
+  weeklyRoles = plan ? plan.roles.map(r=>({...r})) : [];
+
+  const wrap = document.createElement('div');
+  wrap.className = 'overlay';
+  wrap.innerHTML = `
+    <div class="modal" style="max-width:560px;">
+      <h3>Weekly chore rotation</h3>
+      <p style="font-size:13px;color:var(--ink-soft);margin-top:-6px;">Pick which chores rotate together each week and how many people each one needs. Everyone in the rotation order below gets exactly one of these chores a week — nobody doubles up.</p>
+      <div class="section-label" style="margin-top:10px;">Chores in this rotation</div>
+      <div id="roleList"></div>
+      <div class="section-label">Rotation order</div>
+      <p style="font-size:12px;color:var(--ink-soft);margin-top:-4px;">Everyone checked gets one role each week. Uncheck anyone who isn't part of the chore rotation — like a housemate's partner who isn't on chore duty — and they'll stay on the board for reminders and the calendar, just not in this rotation. Reorder the rest with ↑ / ↓; the whole order shifts by one person every week.</p>
+      <div id="orderList"></div>
+      <div class="form-row" style="margin-top:10px;">
+        <div><label>Starting</label><input id="wAnchor" type="date" value="${plan?plan.anchorDate:todayStr()}"></div>
+      </div>
+      <div class="section-label">Preview</div>
+      <div id="weeklyPreview"></div>
+      <div id="weeklyError" class="error-text" style="display:none;"></div>
+      <div class="modal-actions">
+        ${plan?`<button class="btn ghost" id="clearPlanBtn" style="color:var(--danger);border-color:var(--danger);">Turn off rotation</button>`:''}
+        <button class="btn ghost" id="cancelWeekly">Cancel</button>
+        <button class="btn" id="saveWeekly">Save rotation</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+
+  function renderRoles(){
+    const cont = wrap.querySelector('#roleList');
+    const candidates = state.chores.filter(c=> c.type!=='linked' || weeklyRoles.some(r=>r.choreId===c.id));
+    if(candidates.length===0){ cont.innerHTML = `<div class="empty" style="padding:6px 4px;">Add some chores first, then come back here to link them.</div>`; return; }
+    cont.innerHTML = candidates.map(c=>{
+      const role = weeklyRoles.find(r=>r.choreId===c.id);
+      const checked = !!role;
+      return `<div class="row" style="padding:6px 2px;">
+        <input type="checkbox" data-rolechore="${c.id}" ${checked?'checked':''} style="width:auto;flex:none;">
+        <div class="row-main row-title" style="font-size:13.5px;">${escapeHtml(c.title)}</div>
+        <input type="number" min="1" max="${Math.max(state.members.length,1)}" value="${role?role.slots:1}" data-slotchore="${c.id}" style="width:56px;flex:none;" ${checked?'':'disabled'}>
+        <span style="font-size:11.5px;color:var(--ink-soft);flex:none;">people/wk</span>
+      </div>`;
+    }).join('');
+    cont.querySelectorAll('[data-rolechore]').forEach(cb=>{
+      cb.onchange = ()=>{
+        const id = cb.dataset.rolechore;
+        const slotsInput = cont.querySelector(`[data-slotchore="${id}"]`);
+        if(cb.checked){
+          slotsInput.disabled = false;
+          if(!weeklyRoles.some(r=>r.choreId===id)) weeklyRoles.push({choreId:id, slots:parseInt(slotsInput.value,10)||1});
+        } else {
+          slotsInput.disabled = true;
+          weeklyRoles = weeklyRoles.filter(r=>r.choreId!==id);
+        }
+        renderPreviewWeekly();
+      };
+    });
+    cont.querySelectorAll('[data-slotchore]').forEach(inp=>{
+      inp.onchange = ()=>{
+        const id = inp.dataset.slotchore;
+        const role = weeklyRoles.find(r=>r.choreId===id);
+        if(role) role.slots = Math.max(1, parseInt(inp.value,10)||1);
+        renderPreviewWeekly();
+      };
+    });
+  }
+
+  function renderOrder(){
+    const cont = wrap.querySelector('#orderList');
+    if(state.members.length===0){ cont.innerHTML = `<div class="empty" style="padding:6px 4px;">Add housemates first using the + in the header.</div>`; return; }
+    const excluded = state.members.filter(m=>!weeklyOrder.includes(m.id));
+    let html = weeklyOrder.map((mid,i)=>{
+      const m = memberById(mid);
+      return `<div class="row" style="padding:6px 2px;">
+        <input type="checkbox" data-toggleinclude="${mid}" checked style="width:auto;flex:none;">
+        ${avatarHtml(m,'sm')}
+        <div class="row-main row-title" style="font-size:13.5px;">${m?escapeHtml(m.name):'?'}</div>
+        <button class="icon-btn" data-omoveup="${i}" ${i===0?'disabled':''} style="${i===0?'opacity:.25;':''}">↑</button>
+        <button class="icon-btn" data-omovedown="${i}" ${i===weeklyOrder.length-1?'disabled':''} style="${i===weeklyOrder.length-1?'opacity:.25;':''}">↓</button>
+      </div>`;
+    }).join('');
+    if(excluded.length>0){
+      html += `<div style="font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;margin:10px 0 4px;">Not in this rotation</div>`;
+      html += excluded.map(m=>`<div class="row" style="padding:6px 2px;opacity:.65;">
+        <input type="checkbox" data-toggleinclude="${m.id}" style="width:auto;flex:none;">
+        ${avatarHtml(m,'sm')}
+        <div class="row-main row-title" style="font-size:13.5px;">${escapeHtml(m.name)}</div>
+      </div>`).join('');
+    }
+    cont.innerHTML = html;
+    cont.querySelectorAll('[data-toggleinclude]').forEach(cb=>{
+      cb.onchange = ()=>{
+        const id = cb.dataset.toggleinclude;
+        if(cb.checked){ if(!weeklyOrder.includes(id)) weeklyOrder.push(id); }
+        else { weeklyOrder = weeklyOrder.filter(x=>x!==id); }
+        renderOrder(); renderPreviewWeekly();
+      };
+    });
+    cont.querySelectorAll('[data-omoveup]:not([disabled])').forEach(btn=>{
+      btn.onclick = ()=>{ const i=+btn.dataset.omoveup; [weeklyOrder[i-1],weeklyOrder[i]]=[weeklyOrder[i],weeklyOrder[i-1]]; renderOrder(); renderPreviewWeekly(); };
+    });
+    cont.querySelectorAll('[data-omovedown]:not([disabled])').forEach(btn=>{
+      btn.onclick = ()=>{ const i=+btn.dataset.omovedown; [weeklyOrder[i+1],weeklyOrder[i]]=[weeklyOrder[i],weeklyOrder[i+1]]; renderOrder(); renderPreviewWeekly(); };
+    });
+  }
+
+  function renderPreviewWeekly(){
+    const el = wrap.querySelector('#weeklyPreview');
+    const errEl = wrap.querySelector('#weeklyError');
+    if(weeklyRoles.length===0){
+      el.innerHTML = `<div class="empty" style="padding:6px 4px;">Pick at least one chore above.</div>`;
+      errEl.style.display='none';
+      return;
+    }
+    const totalSlots = weeklyRoles.reduce((s,r)=>s+r.slots,0);
+    if(totalSlots !== weeklyOrder.length){
+      errEl.textContent = `These chores need ${totalSlots} people a week, but the rotation order has ${weeklyOrder.length}. Adjust the "people/wk" numbers so they add up to ${weeklyOrder.length}.`;
+      errEl.style.display = 'block';
+      el.innerHTML = '';
+      return;
+    }
+    errEl.style.display = 'none';
+    const anchor = wrap.querySelector('#wAnchor').value || todayStr();
+    let html = '';
+    const N = weeklyOrder.length;
+    for(let w=0; w<4; w++){
+      const start = new Date(anchor+'T00:00:00'); start.setDate(start.getDate()+w*7);
+      const end = new Date(start); end.setDate(end.getDate()+6);
+      const shift = w % N;
+      const rotated = weeklyOrder.slice(shift).concat(weeklyOrder.slice(0, shift));
+      let offset = 0;
+      const parts = weeklyRoles.map(r=>{
+        const slice = rotated.slice(offset, offset+r.slots); offset += r.slots;
+        const chore = state.chores.find(c=>c.id===r.choreId);
+        const names = slice.map(id=>memberById(id)?.name||'?').join(' & ');
+        return `<b>${escapeHtml(chore?chore.title:'?')}:</b> ${escapeHtml(names)}`;
+      }).join(' &nbsp;·&nbsp; ');
+      html += `<div class="row" style="padding:7px 2px;flex-wrap:wrap;align-items:flex-start;">
+        <span class="tag event" style="margin-top:2px;">${fmtDate(isoDate(start))}–${fmtDate(isoDate(end))}</span>
+        <div class="row-main row-sub" style="font-size:12px;line-height:1.5;">${parts}</div>
+      </div>`;
+    }
+    el.innerHTML = html;
+  }
+
+  renderRoles();
+  renderOrder();
+  renderPreviewWeekly();
+  wrap.querySelector('#wAnchor').addEventListener('change', renderPreviewWeekly);
+  wrap.querySelector('#cancelWeekly').onclick = ()=> document.body.removeChild(wrap);
+
+  if(plan){
+    wrap.querySelector('#clearPlanBtn').onclick = ()=>{
+      state.chores.forEach(c=>{
+        if(c.type==='linked'){ c.type='rotating'; c.rotation={intervalWeeks:1, anchorDate:todayStr(), turns:[]}; c.doneForPeriod=null; delete c.doneForWeek; }
+      });
+      state.weeklyRotation = null;
+      saveState(); document.body.removeChild(wrap); render();
+    };
+  }
+
+  wrap.querySelector('#saveWeekly').onclick = ()=>{
+    if(weeklyRoles.length===0) return;
+    const totalSlots = weeklyRoles.reduce((s,r)=>s+r.slots,0);
+    if(totalSlots !== weeklyOrder.length) return;
+    const anchor = wrap.querySelector('#wAnchor').value || todayStr();
+    const newRoles = weeklyRoles.map(r=>({...r}));
+    state.weeklyRotation = { anchorDate: anchor, order:[...weeklyOrder], roles:newRoles };
+    newRoles.forEach(r=>{
+      const ch = state.chores.find(c=>c.id===r.choreId);
+      if(ch){
+        ch.type='linked';
+        delete ch.rotation; delete ch.assignee; delete ch.frequency; delete ch.dueDate; delete ch.done; delete ch.doneForPeriod;
+        if(ch.doneForWeek===undefined) ch.doneForWeek=null;
+      }
+    });
+    state.chores.forEach(c=>{
+      if(c.type==='linked' && !newRoles.some(r=>r.choreId===c.id)){
+        c.type='rotating'; c.rotation={intervalWeeks:1, anchorDate:todayStr(), turns:[]}; c.doneForPeriod=null; delete c.doneForWeek;
+      }
+    });
+    saveState();
+    document.body.removeChild(wrap);
+    render();
+  };
+}
+
+/* ---------- CALENDAR TAB ---------- */
+function renderMonthCalendar(){
+  const firstDay = new Date(viewYear, viewMonth, 1);
+  const startWeekday = firstDay.getDay();
+  const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+  const monthName = firstDay.toLocaleDateString(undefined,{month:'long', year:'numeric'});
+  let cells = '';
+  for(let i=0;i<startWeekday;i++) cells += `<div class="cal-cell empty"></div>`;
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = `${viewYear}-${String(viewMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayEvents = state.events.filter(e=> e.type==='birthday' ? e.date.slice(5,10)===dateStr.slice(5,10) : e.date===dateStr);
+    const isToday = dateStr === todayStr();
+    const isSelected = dateStr === selectedCalDate;
+    cells += `<div class="cal-cell ${isToday?'today':''} ${isSelected?'selected':''}" data-date="${dateStr}">
+      <div class="cal-daynum">${d}</div>
+      <div class="cal-dots">${dayEvents.slice(0,4).map(e=>`<span class="cal-dot ${e.type}"></span>`).join('')}</div>
+    </div>`;
+  }
+  return `
+  <div class="cal-header">
+    <button class="icon-btn" data-action="cal-prev">‹</button>
+    <div class="cal-title">${monthName}</div>
+    <button class="icon-btn" data-action="cal-next">›</button>
+  </div>
+  <div class="cal-grid">
+    ${['S','M','T','W','T','F','S'].map(d=>`<div class="cal-dow">${d}</div>`).join('')}
+    ${cells}
+  </div>`;
+}
+function renderCalendar(){
+  const dayEvents = state.events.filter(e=> e.type==='birthday' ? e.date.slice(5,10)===selectedCalDate.slice(5,10) : e.date===selectedCalDate);
+  const sortedUpcoming = [...state.events]
+    .map(e=>({...e,_days:daysUntil(e.date, e.type==='birthday')}))
+    .filter(e=>e._days>=0 && e._days<=30)
+    .sort((a,b)=>a._days-b._days);
+  return `
+    <div class="card">${renderMonthCalendar()}</div>
+    <div class="card">
+      <h3>${selectedCalDate===todayStr() ? 'Today' : fmtDateFull(selectedCalDate)}</h3>
+      ${dayEvents.length===0 ? `<div class="empty">Nothing on this day yet.</div>` : dayEvents.map(eventRow).join('')}
+      <div class="form-grid" style="margin-top:14px;">
+        <div class="form-row">
+          <div><label>Title</label><input id="eventTitle" placeholder="e.g. Maya's birthday"></div>
+          <div><label>Type</label>
+            <select id="eventType">
+              <option value="event">Event</option>
+              <option value="birthday">Birthday (repeats yearly)</option>
+            </select>
+          </div>
+        </div>
+        <div><label>Date</label><input id="eventDate" type="date" value="${selectedCalDate}"></div>
+      </div>
+      <button class="btn" data-action="add-event">Add to calendar</button>
+    </div>
+    <div class="card">
+      <h3>Next 30 days</h3>
+      ${sortedUpcoming.length===0?`<div class="empty">Nothing on the calendar yet.</div>`:sortedUpcoming.map(eventRow).join('')}
+    </div>
+  `;
+}
+
+/* ---------- REMINDERS ---------- */
+function renderReminders(){
+  const sorted = [...state.reminders].sort((a,b)=>b.createdAt-a.createdAt);
+  return `
+    <div class="card">
+      <h3>Leave a reminder</h3>
+      <div class="form-grid">
+        <div><label>Message</label><textarea id="reminderMsg" rows="2" placeholder="e.g. Don't forget to pay your share of internet!"></textarea></div>
+        <div class="form-row">
+          <div><label>From</label>
+            <select id="reminderFrom">${state.members.map(m=>`<option value="${m.id}" ${m.id===currentUserId?'selected':''}>${escapeHtml(m.name)}</option>`).join('')}</select>
+          </div>
+          <div><label>To</label>
+            <select id="reminderTo"><option value="everyone">Everyone</option>${state.members.map(m=>`<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('')}</select>
+          </div>
+        </div>
+      </div>
+      <button class="btn" data-action="add-reminder">Post reminder</button>
+    </div>
+    <div class="card">
+      <h3>All reminders</h3>
+      ${sorted.length===0?`<div class="empty">No reminders yet.</div>`:sorted.map(reminderNote).join('')}
+    </div>
+  `;
+}
+
+/* ---------- BILLS ---------- */
+function computeBalances(){
+  const bal = {};
+  state.members.forEach(m=>bal[m.id]=0);
+  state.expenses.filter(ex=>!ex.removed).forEach(ex=>{
+    const splitN = ex.splitAmong.length || 1;
+    const share = ex.amount / splitN;
+    ex.splitAmong.forEach(id=>{ bal[id] = (bal[id]||0) - share; });
+    bal[ex.paidBy] = (bal[ex.paidBy]||0) + ex.amount;
+  });
+  return bal;
+}
+function settlementPlan(bal){
+  const creditors = [], debtors = [];
+  Object.entries(bal).forEach(([id,amt])=>{
+    if(amt>0.005) creditors.push({id,amt});
+    else if(amt<-0.005) debtors.push({id,amt:-amt});
+  });
+  creditors.sort((a,b)=>b.amt-a.amt);
+  debtors.sort((a,b)=>b.amt-a.amt);
+  const moves=[]; let i=0,j=0;
+  while(i<debtors.length && j<creditors.length){
+    const pay = Math.min(debtors[i].amt, creditors[j].amt);
+    if(pay>0.005) moves.push({from:debtors[i].id, to:creditors[j].id, amt:pay});
+    debtors[i].amt -= pay; creditors[j].amt -= pay;
+    if(debtors[i].amt<=0.005) i++;
+    if(creditors[j].amt<=0.005) j++;
+  }
+  return moves;
+}
+function expenseRow(ex){
+  const payer = memberById(ex.paidBy);
+  const canManage = !!currentUserId && currentUserId===ex.paidBy;
+  return `<div class="row">
+    ${avatarHtml(payer,'sm')}
+    <div class="row-main">
+      <div class="row-title">${escapeHtml(ex.description)}</div>
+      <div class="row-sub">${payer?escapeHtml(payer.name):'?'} paid · split ${ex.splitAmong.length} ways</div>
+    </div>
+    <span class="balance-amt">$${ex.amount.toFixed(2)}</span>
+    ${canManage
+      ? `<button class="icon-btn" data-action="remove-expense" data-id="${ex.id}" title="Remove">✕</button>`
+      : `<button class="icon-btn" disabled title="Only ${payer?escapeHtml(payer.name):'the person paid'} can remove this" style="opacity:.3;cursor:default;">✕</button>`}
+  </div>`;
+}
+function backlogRow(ex){
+  const payer = memberById(ex.paidBy);
+  const remover = ex.removedBy ? memberById(ex.removedBy) : null;
+  const canManage = !!currentUserId && currentUserId===ex.paidBy;
+  const dateLabel = fmtDate(isoDate(new Date(ex.createdAt)));
+  return `<div class="row" style="${ex.removed?'opacity:.55;':''}">
+    ${avatarHtml(payer,'sm')}
+    <div class="row-main">
+      <div class="row-title">${escapeHtml(ex.description)}</div>
+      <div class="row-sub">${payer?escapeHtml(payer.name):'?'} paid · split ${ex.splitAmong.length} ways · ${dateLabel}${ex.removed?` · removed${remover?' by '+escapeHtml(remover.name):''}`:''}</div>
+    </div>
+    <span class="tag ${ex.removed?'overdue':'event'}">${ex.removed?'Removed':'Active'}</span>
+    <span class="balance-amt">$${ex.amount.toFixed(2)}</span>
+    ${ex.removed && canManage ? `<button class="icon-btn" data-action="restore-expense" data-id="${ex.id}" title="Restore">↺</button>`:''}
+  </div>`;
+}
+function renderBills(){
+  const bal = computeBalances();
+  const moves = settlementPlan(bal);
+  const sortedActive = [...state.expenses].filter(ex=>!ex.removed).sort((a,b)=>b.createdAt-a.createdAt);
+  const sortedAll = [...state.expenses].sort((a,b)=>b.createdAt-a.createdAt);
+  return `
+    <div class="card">
+      <h3>Add an expense</h3>
+      <div class="form-grid">
+        <div class="form-row">
+          <div><label>What for</label><input id="expDesc" placeholder="e.g. Costco grocery run"></div>
+          <div><label>Amount ($)</label><input id="expAmount" type="number" min="0" step="0.01" placeholder="0.00"></div>
+        </div>
+        <div><label>Paid by</label>
+          <select id="expPaidBy">${state.members.map(m=>`<option value="${m.id}" ${m.id===currentUserId?'selected':''}>${escapeHtml(m.name)}</option>`).join('')}</select>
+        </div>
+        <div>
+          <label>Split among</label>
+          <div class="chip-select" id="splitChips">
+            ${state.members.map(m=>`<div class="chip active" data-id="${m.id}" style="background:${m.color};border-color:${m.color}">${escapeHtml(m.name)}</div>`).join('')}
+          </div>
+        </div>
+      </div>
+      <button class="btn" data-action="add-expense">Add expense</button>
+    </div>
+
+    <div class="card">
+      <h3>Balances</h3>
+      ${state.members.map(m=>{
+        const amt = bal[m.id]||0;
+        return `<div class="row">
+          ${avatarHtml(m,'sm')}
+          <div class="row-main row-title">${escapeHtml(m.name)}</div>
+          <span class="balance-amt ${amt>0.005?'pos':amt<-0.005?'neg':''}">${amt>0.005?'+':''}${amt.toFixed(2)}</span>
+        </div>`;
+      }).join('')}
+      ${moves.length>0?`
+        <div class="section-label">Settle up</div>
+        ${moves.map(mv=>`<div class="row"><div class="row-main row-sub"><b>${escapeHtml(memberById(mv.from)?.name||'?')}</b> pays <b>${escapeHtml(memberById(mv.to)?.name||'?')}</b></div><span class="balance-amt">$${mv.amt.toFixed(2)}</span></div>`).join('')}
+      `: `<div class="empty" style="padding-top:10px;">Everyone's settled up.</div>`}
+    </div>
+
+    <div class="card">
+      <h3>Recent expenses</h3>
+      <p style="font-size:12px;color:var(--ink-soft);margin:-4px 0 10px;">Only the person who was paid can remove an expense.</p>
+      ${sortedActive.length===0?`<div class="empty">No expenses logged yet.</div>`:sortedActive.map(expenseRow).join('')}
+    </div>
+
+    <div class="card">
+      <h3>Full transaction backlog</h3>
+      <p style="font-size:12px;color:var(--ink-soft);margin:-4px 0 10px;">Every expense ever logged, including removed ones — kept so anyone can double-check or pull one back if needed.</p>
+      ${sortedAll.length===0?`<div class="empty">Nothing logged yet.</div>`:sortedAll.map(backlogRow).join('')}
+    </div>
+  `;
+}
+
+/* ---------- EVENT HANDLERS ---------- */
+function attachHandlers(){
+  const c = document.getElementById('content');
+
+  const openChoreBtn = c.querySelector('[data-action="open-chore-modal"]');
+  if(openChoreBtn) openChoreBtn.onclick = ()=>openChoreModal();
+  c.querySelectorAll('[data-action="edit-chore"]').forEach(el=> el.onclick = ()=>{
+    const ch = state.chores.find(x=>x.id===el.dataset.id);
+    if(ch) openChoreModal(ch);
+  });
+  const openWeeklyBtn = c.querySelector('[data-action="open-weekly-rotation"]');
+  if(openWeeklyBtn) openWeeklyBtn.onclick = openWeeklyRotationModal;
+
+  const calPrev = c.querySelector('[data-action="cal-prev"]');
+  if(calPrev) calPrev.onclick = ()=>{ viewMonth--; if(viewMonth<0){viewMonth=11;viewYear--;} render(); };
+  const calNext = c.querySelector('[data-action="cal-next"]');
+  if(calNext) calNext.onclick = ()=>{ viewMonth++; if(viewMonth>11){viewMonth=0;viewYear++;} render(); };
+  c.querySelectorAll('.cal-cell[data-date]').forEach(cell=> cell.onclick = ()=>{ selectedCalDate = cell.dataset.date; render(); });
+
+  const addEventBtn = c.querySelector('[data-action="add-event"]');
+  if(addEventBtn) addEventBtn.onclick = ()=>{
+    const title = c.querySelector('#eventTitle').value.trim();
+    const date = c.querySelector('#eventDate').value;
+    if(!title || !date) return;
+    state.events.push({id:uid(), title, date, type:c.querySelector('#eventType').value});
+    saveState(); render();
+  };
+
+  const addReminderBtn = c.querySelector('[data-action="add-reminder"]');
+  if(addReminderBtn) addReminderBtn.onclick = ()=>{
+    const message = c.querySelector('#reminderMsg').value.trim();
+    if(!message) return;
+    state.reminders.push({ id:uid(), message, from: c.querySelector('#reminderFrom').value, to: c.querySelector('#reminderTo').value, done:false, createdAt:Date.now() });
+    saveState(); render();
+  };
+
+  const splitChips = c.querySelectorAll('#splitChips .chip');
+  splitChips.forEach(ch=> ch.onclick = ()=> ch.classList.toggle('active'));
+
+  const addExpenseBtn = c.querySelector('[data-action="add-expense"]');
+  if(addExpenseBtn) addExpenseBtn.onclick = ()=>{
+    const description = c.querySelector('#expDesc').value.trim();
+    const amount = parseFloat(c.querySelector('#expAmount').value);
+    const paidBy = c.querySelector('#expPaidBy').value;
+    const splitAmong = Array.from(c.querySelectorAll('#splitChips .chip.active')).map(ch=>ch.dataset.id);
+    if(!description || !amount || amount<=0 || splitAmong.length===0) return;
+    state.expenses.push({id:uid(), description, amount, paidBy, splitAmong, createdAt:Date.now(), removed:false, removedAt:null, removedBy:null});
+    saveState(); render();
+  };
+
+  c.querySelectorAll('[data-action="toggle-chore"]').forEach(el=> el.onclick = ()=>{
+    const ch = state.chores.find(x=>x.id===el.dataset.id);
+    if(!ch) return;
+    if(ch.type==='linked'){
+      const plan = state.weeklyRotation;
+      if(!plan) return;
+      const weekIdx = weeklyPlanPeriod(plan).weekIndex;
+      ch.doneForWeek = ch.doneForWeek===weekIdx ? null : weekIdx;
+    } else if(ch.type==='rotating'){
+      const st = rotationStatus(ch);
+      const key = `${st.cycleNumber}-${st.periodIndex}`;
+      ch.doneForPeriod = ch.doneForPeriod===key ? null : key;
+    } else {
+      ch.done = !ch.done;
+      if(ch.done && ch.frequency!=='one-time'){
+        const next = new Date(ch.dueDate+'T00:00:00');
+        if(ch.frequency==='daily') next.setDate(next.getDate()+1);
+        if(ch.frequency==='weekly') next.setDate(next.getDate()+7);
+        if(ch.frequency==='monthly') next.setMonth(next.getMonth()+1);
+        ch.dueDate = next.toISOString().slice(0,10);
+        ch.done = false;
+      }
+    }
+    saveState(); render();
+  });
+  c.querySelectorAll('[data-action="delete-chore"]').forEach(el=> el.onclick = ()=>{
+    state.chores = state.chores.filter(x=>x.id!==el.dataset.id); saveState(); render();
+  });
+  c.querySelectorAll('[data-action="delete-event"]').forEach(el=> el.onclick = ()=>{
+    state.events = state.events.filter(x=>x.id!==el.dataset.id); saveState(); render();
+  });
+  c.querySelectorAll('[data-action="toggle-reminder"]').forEach(el=> el.onclick = ()=>{
+    const r = state.reminders.find(x=>x.id===el.dataset.id); if(r){ r.done=!r.done; saveState(); render(); }
+  });
+  c.querySelectorAll('[data-action="delete-reminder"]').forEach(el=> el.onclick = ()=>{
+    state.reminders = state.reminders.filter(x=>x.id!==el.dataset.id); saveState(); render();
+  });
+  c.querySelectorAll('[data-action="remove-expense"]').forEach(el=> el.onclick = ()=>{
+    const ex = state.expenses.find(x=>x.id===el.dataset.id);
+    if(!ex) return;
+    if(currentUserId !== ex.paidBy) return; // only the person who was paid can remove it
+    ex.removed = true;
+    ex.removedAt = Date.now();
+    ex.removedBy = currentUserId;
+    saveState(); render();
+  });
+  c.querySelectorAll('[data-action="restore-expense"]').forEach(el=> el.onclick = ()=>{
+    const ex = state.expenses.find(x=>x.id===el.dataset.id);
+    if(!ex) return;
+    if(currentUserId !== ex.paidBy) return;
+    ex.removed = false;
+    ex.removedAt = null;
+    ex.removedBy = null;
+    saveState(); render();
+  });
+}
+
+init();
+</script>
+</body>
+</html>
