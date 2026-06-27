@@ -254,6 +254,15 @@ const daysUntil = (dateStr, recurring) => {
   return Math.round((target-now)/86400000);
 };
 function memberById(id){ return state.members.find(m=>m.id===id); }
+function canSeeEvent(e){
+  if(!e.visibility || e.visibility==='everyone') return true;
+  if(!currentUserId) return false;
+  if(e.createdBy===currentUserId) return true;
+  if(e.visibility==='private') return false;
+  if(e.visibility==='selected') return (e.visibleTo||[]).includes(currentUserId);
+  return true;
+}
+function visibleEvents(){ return state.events.filter(canSeeEvent); }
 function initials(name){ return name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function avatarHtml(member, sizeClass=''){
@@ -414,7 +423,7 @@ function importGoogleEvents(items, importedByMemberId){
     const title = item.summary || '(untitled event)';
     const existing = state.events.find(e=> e.source==='google' && e.sourceId===item.id);
     if(existing){ existing.title = title; existing.date = dateStr; updated++; }
-    else { state.events.push({ id:uid(), title, date:dateStr, type:'event', source:'google', sourceId:item.id, importedBy:importedByMemberId }); added++; }
+    else { state.events.push({ id:uid(), title, date:dateStr, type:'event', source:'google', sourceId:item.id, importedBy:importedByMemberId, createdBy:importedByMemberId, visibility:'private', visibleTo:[] }); added++; }
   });
   return { added, updated };
 }
@@ -550,7 +559,7 @@ function getNotifications(){
         text:`Chores rotated for the week of ${fmtDate(per.periodStart)} — check who's up.` });
     }
   }
-  state.events.forEach(e=>{
+  state.events.filter(canSeeEvent).forEach(e=>{
     const days = daysUntil(e.date, e.type==='birthday');
     if(days>=0 && days<=3){
       let occDate = e.date;
@@ -1000,7 +1009,7 @@ function openSwapModal(ch){
 /* ---------- DASHBOARD ---------- */
 function renderDashboard(){
   const dueChores = state.chores.filter(isDueNow).sort((a,b)=>effectiveDate(a).localeCompare(effectiveDate(b)));
-  const upcomingEvents = state.events
+  const upcomingEvents = visibleEvents()
     .map(e=>({...e, _days: daysUntil(e.date, e.type==='birthday')}))
     .filter(e=> e._days>=0 && e._days<=14)
     .sort((a,b)=>a._days-b._days);
@@ -1034,12 +1043,15 @@ function eventRow(e){
   const days = e._days!==undefined? e._days : daysUntil(e.date, e.type==='birthday');
   const label = days===0?'Today':days===1?'Tomorrow':(days>=0?`in ${days}d`:'');
   const importer = e.source==='google' ? memberById(e.importedBy) : null;
+  let visLabel = '';
+  if(e.visibility==='private') visLabel = ' · 🔒 Private';
+  else if(e.visibility==='selected') visLabel = ' · 👥 Shared';
   return `
   <div class="row">
     <span class="tag ${e.type}">${e.type==='birthday'?'🎂':'📌'}</span>
     <div class="row-main">
       <div class="row-title">${escapeHtml(e.title)}</div>
-      <div class="row-sub">${fmtDate(e.date)}${label?' · '+label:''}${importer?` · via ${escapeHtml(importer.name)}'s Google Calendar`:''}</div>
+      <div class="row-sub">${fmtDate(e.date)}${label?' · '+label:''}${importer?` · via ${escapeHtml(importer.name)}'s Google Calendar`:''}${visLabel}</div>
     </div>
     <button class="icon-btn" data-action="delete-event" data-id="${e.id}">✕</button>
   </div>`;
@@ -1493,7 +1505,7 @@ function renderMonthCalendar(){
   for(let i=0;i<startWeekday;i++) cells += `<div class="cal-cell empty"></div>`;
   for(let d=1; d<=daysInMonth; d++){
     const dateStr = `${viewYear}-${String(viewMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const dayEvents = state.events.filter(e=> e.type==='birthday' ? e.date.slice(5,10)===dateStr.slice(5,10) : e.date===dateStr);
+    const dayEvents = state.events.filter(canSeeEvent).filter(e=> e.type==='birthday' ? e.date.slice(5,10)===dateStr.slice(5,10) : e.date===dateStr);
     const isToday = dateStr === todayStr();
     const isSelected = dateStr === selectedCalDate;
     const hasPhotos = !!(state.dayPhotos && state.dayPhotos[dateStr] && state.dayPhotos[dateStr].length>0);
@@ -1515,13 +1527,13 @@ function renderMonthCalendar(){
   </div>`;
 }
 function renderCalendar(){
-  const dayEvents = state.events.filter(e=> e.type==='birthday' ? e.date.slice(5,10)===selectedCalDate.slice(5,10) : e.date===selectedCalDate);
+  const dayEvents = state.events.filter(canSeeEvent).filter(e=> e.type==='birthday' ? e.date.slice(5,10)===selectedCalDate.slice(5,10) : e.date===selectedCalDate);
   const photoMeta = (state.dayPhotos && state.dayPhotos[selectedCalDate]) || [];
   const cachedImages = dayPhotoImageCache[selectedCalDate];
   if(photoMeta.length>0 && !cachedImages){
     getDayPhotoImages(selectedCalDate).then(()=>{ if(activeTab==='calendar') render(); });
   }
-  const sortedUpcoming = [...state.events]
+  const sortedUpcoming = visibleEvents()
     .map(e=>({...e,_days:daysUntil(e.date, e.type==='birthday')}))
     .filter(e=>e._days>=0 && e._days<=30)
     .sort((a,b)=>a._days-b._days);
@@ -1547,6 +1559,20 @@ function renderCalendar(){
           </div>
         </div>
         <div><label>Date</label><input id="eventDate" type="date" value="${selectedCalDate}"></div>
+        <div>
+          <label>Who can see this</label>
+          <select id="eventVisibility">
+            <option value="everyone">Everyone</option>
+            <option value="private">Just me</option>
+            <option value="selected">Specific people</option>
+          </select>
+        </div>
+        <div id="eventVisibleToWrap" style="display:none;">
+          <label>Share with</label>
+          <div class="chip-select" id="eventVisibleToChips">
+            ${state.members.map(m=>`<div class="chip" data-id="${m.id}" style="border-color:${m.color}">${escapeHtml(m.name)}</div>`).join('')}
+          </div>
+        </div>
       </div>
       <button class="btn" data-action="add-event">Add to calendar</button>
       <div class="section-label" style="margin-top:18px;">Photos from this day</div>
@@ -1855,12 +1881,30 @@ function attachHandlers(){
     img.onclick = ()=> openPhotoLightbox(selectedCalDate, img.dataset.photoId);
   });
 
+  const eventVisibilitySelect = c.querySelector('#eventVisibility');
+  if(eventVisibilitySelect) eventVisibilitySelect.addEventListener('change', ()=>{
+    const wrap = c.querySelector('#eventVisibleToWrap');
+    if(wrap) wrap.style.display = eventVisibilitySelect.value==='selected' ? 'block' : 'none';
+  });
+  const visChips = c.querySelectorAll('#eventVisibleToChips .chip');
+  visChips.forEach(chip=> chip.onclick = ()=> chip.classList.toggle('active'));
+
   const addEventBtn = c.querySelector('[data-action="add-event"]');
   if(addEventBtn) addEventBtn.onclick = ()=>{
     const title = c.querySelector('#eventTitle').value.trim();
     const date = c.querySelector('#eventDate').value;
     if(!title || !date) return;
-    state.events.push({id:uid(), title, date, type:c.querySelector('#eventType').value});
+    let visibility = c.querySelector('#eventVisibility') ? c.querySelector('#eventVisibility').value : 'everyone';
+    let visibleTo = [];
+    if(visibility!=='everyone' && !currentUserId){
+      alert("Pick who you are (top right) first to use private or shared events — adding this as visible to everyone instead.");
+      visibility = 'everyone';
+    }
+    if(visibility==='selected'){
+      visibleTo = Array.from(c.querySelectorAll('#eventVisibleToChips .chip.active')).map(ch=>ch.dataset.id);
+      if(visibleTo.length===0) visibility = 'private';
+    }
+    state.events.push({id:uid(), title, date, type:c.querySelector('#eventType').value, visibility, visibleTo, createdBy:currentUserId});
     saveState(); render();
   };
 
