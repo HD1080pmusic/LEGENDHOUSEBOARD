@@ -214,7 +214,6 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
-import { getStorage, ref as storageRef, uploadString, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAzUJ7JtySLf-C5KJdjIygvJbRpKw-dfm0",
@@ -227,7 +226,7 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const stateDocRef = doc(db, 'houseboard', 'state');
-const storage = getStorage(fbApp);
+let dayPhotoImageCache = {};
 
 const MARKER_COLORS = ['#2E5EAA','#2F9E62','#D6447D','#DB7E1B','#7B4FB0','#1C8C8C'];
 let state = { members: [], chores: [], events: [], reminders: [], expenses: [], dayPhotos: {}, houseRules: [] };
@@ -307,7 +306,7 @@ function fileToResizedDataUrl(file, maxSize=140){
   });
 }
 
-function fileToResizedPhoto(file, maxDim=1600, quality=0.8){
+function fileToResizedPhoto(file, maxDim=1000, quality=0.6){
   return new Promise((resolve,reject)=>{
     const reader = new FileReader();
     reader.onerror = reject;
@@ -328,18 +327,38 @@ function fileToResizedPhoto(file, maxDim=1600, quality=0.8){
     reader.readAsDataURL(file);
   });
 }
+/* Photo bytes live in their own small Firestore doc per day (collection
+   'dayPhotoImages'), separate from the main app state. Only metadata
+   (id/who/when) lives in state.dayPhotos, so the main state document stays
+   small and fast no matter how many photos get added. */
+async function getDayPhotoImages(dateStr){
+  if(dayPhotoImageCache[dateStr]) return dayPhotoImageCache[dateStr];
+  try{
+    const snap = await getDoc(doc(db, 'dayPhotoImages', dateStr));
+    const data = snap.exists() ? snap.data() : {};
+    dayPhotoImageCache[dateStr] = data;
+    return data;
+  } catch(e){ console.error('load day photo images failed', e); return {}; }
+}
 async function uploadDayPhoto(dateStr, file){
   const dataUrl = await fileToResizedPhoto(file);
-  const path = `day-photos/${dateStr}/${uid()}.jpg`;
-  const sref = storageRef(storage, path);
-  await uploadString(sref, dataUrl, 'data_url');
-  const url = await getDownloadURL(sref);
-  return { id: uid(), path, url, addedBy: currentUserId, addedAt: Date.now() };
+  const photoId = uid();
+  const existing = await getDayPhotoImages(dateStr);
+  const updated = { ...existing, [photoId]: dataUrl };
+  await setDoc(doc(db, 'dayPhotoImages', dateStr), updated);
+  dayPhotoImageCache[dateStr] = updated;
+  return { id: photoId, addedBy: currentUserId, addedAt: Date.now() };
 }
-async function deleteDayPhoto(dateStr, photo){
-  try{ await deleteObject(storageRef(storage, photo.path)); } catch(e){ console.error('storage delete failed', e); }
+async function deleteDayPhoto(dateStr, photoMeta){
+  try{
+    const existing = await getDayPhotoImages(dateStr);
+    const updated = { ...existing };
+    delete updated[photoMeta.id];
+    await setDoc(doc(db, 'dayPhotoImages', dateStr), updated);
+    dayPhotoImageCache[dateStr] = updated;
+  } catch(e){ console.error('delete day photo failed', e); }
   if(state.dayPhotos && state.dayPhotos[dateStr]){
-    state.dayPhotos[dateStr] = state.dayPhotos[dateStr].filter(p=>p.id!==photo.id);
+    state.dayPhotos[dateStr] = state.dayPhotos[dateStr].filter(p=>p.id!==photoMeta.id);
     if(state.dayPhotos[dateStr].length===0) delete state.dayPhotos[dateStr];
   }
   await saveState();
@@ -1441,7 +1460,11 @@ function renderMonthCalendar(){
 }
 function renderCalendar(){
   const dayEvents = state.events.filter(e=> e.type==='birthday' ? e.date.slice(5,10)===selectedCalDate.slice(5,10) : e.date===selectedCalDate);
-  const dayPhotos = (state.dayPhotos && state.dayPhotos[selectedCalDate]) || [];
+  const photoMeta = (state.dayPhotos && state.dayPhotos[selectedCalDate]) || [];
+  const cachedImages = dayPhotoImageCache[selectedCalDate];
+  if(photoMeta.length>0 && !cachedImages){
+    getDayPhotoImages(selectedCalDate).then(()=>{ if(activeTab==='calendar') render(); });
+  }
   const sortedUpcoming = [...state.events]
     .map(e=>({...e,_days:daysUntil(e.date, e.type==='birthday')}))
     .filter(e=>e._days>=0 && e._days<=30)
@@ -1466,7 +1489,12 @@ function renderCalendar(){
       <button class="btn" data-action="add-event">Add to calendar</button>
       <div class="section-label" style="margin-top:18px;">Photos from this day</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;">
-        ${dayPhotos.map(p=>`<img src="${p.url}" data-action="view-photo" data-photo-id="${p.id}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;cursor:pointer;" alt="">`).join('')}
+        ${photoMeta.map(meta=>{
+          const dataUrl = cachedImages ? cachedImages[meta.id] : null;
+          return dataUrl
+            ? `<img src="${dataUrl}" data-action="view-photo" data-photo-id="${meta.id}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;cursor:pointer;" alt="">`
+            : `<div style="width:72px;height:72px;border-radius:8px;background:var(--board-bg2);display:flex;align-items:center;justify-content:center;color:var(--ink-soft);font-size:11px;">…</div>`;
+        }).join('')}
         <div data-action="add-day-photo" style="width:72px;height:72px;border-radius:8px;border:2px dashed var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-soft);font-size:24px;">+</div>
       </div>
     </div>
@@ -1478,20 +1506,22 @@ function renderCalendar(){
 }
 
 function openPhotoLightbox(dateStr, photoId){
-  const photos = (state.dayPhotos && state.dayPhotos[dateStr]) || [];
-  let idx = Math.max(photos.findIndex(p=>p.id===photoId), 0);
+  const photoMetas = (state.dayPhotos && state.dayPhotos[dateStr]) || [];
+  const images = dayPhotoImageCache[dateStr] || {};
+  let idx = Math.max(photoMetas.findIndex(p=>p.id===photoId), 0);
   const wrap = document.createElement('div');
   wrap.className='overlay';
   document.body.appendChild(wrap);
   function renderLightbox(){
-    if(photos.length===0){ document.body.removeChild(wrap); render(); return; }
-    const p = photos[idx];
+    if(photoMetas.length===0){ document.body.removeChild(wrap); render(); return; }
+    const meta = photoMetas[idx];
+    const dataUrl = images[meta.id];
     wrap.innerHTML = `
       <div class="modal" style="max-width:520px;text-align:center;">
-        <img src="${p.url}" style="max-width:100%;max-height:55vh;border-radius:10px;object-fit:contain;" alt="">
-        <div style="font-size:12px;color:var(--ink-soft);margin-top:8px;">${fmtDateFull(dateStr)}${photos.length>1?` · ${idx+1} of ${photos.length}`:''}</div>
+        <img src="${dataUrl||''}" style="max-width:100%;max-height:55vh;border-radius:10px;object-fit:contain;" alt="">
+        <div style="font-size:12px;color:var(--ink-soft);margin-top:8px;">${fmtDateFull(dateStr)}${photoMetas.length>1?` · ${idx+1} of ${photoMetas.length}`:''}</div>
         <div class="modal-actions" style="justify-content:space-between;">
-          <div>${photos.length>1?`<button class="icon-btn" data-nav="prev">‹</button><button class="icon-btn" data-nav="next">›</button>`:''}</div>
+          <div>${photoMetas.length>1?`<button class="icon-btn" data-nav="prev">‹</button><button class="icon-btn" data-nav="next">›</button>`:''}</div>
           <div>
             <button class="btn ghost" id="deletePhotoBtn" style="color:var(--danger);border-color:var(--danger);">Delete</button>
             <button class="btn" id="closeLightbox">Close</button>
@@ -1500,13 +1530,13 @@ function openPhotoLightbox(dateStr, photoId){
       </div>`;
     wrap.querySelector('#closeLightbox').onclick = ()=> document.body.removeChild(wrap);
     const prevBtn = wrap.querySelector('[data-nav="prev"]');
-    if(prevBtn) prevBtn.onclick = ()=>{ idx = (idx-1+photos.length)%photos.length; renderLightbox(); };
+    if(prevBtn) prevBtn.onclick = ()=>{ idx = (idx-1+photoMetas.length)%photoMetas.length; renderLightbox(); };
     const nextBtn = wrap.querySelector('[data-nav="next"]');
-    if(nextBtn) nextBtn.onclick = ()=>{ idx = (idx+1)%photos.length; renderLightbox(); };
+    if(nextBtn) nextBtn.onclick = ()=>{ idx = (idx+1)%photoMetas.length; renderLightbox(); };
     wrap.querySelector('#deletePhotoBtn').onclick = async ()=>{
-      await deleteDayPhoto(dateStr, p);
-      photos.splice(idx,1);
-      if(idx>=photos.length) idx = Math.max(photos.length-1,0);
+      await deleteDayPhoto(dateStr, meta);
+      photoMetas.splice(idx,1);
+      if(idx>=photoMetas.length) idx = Math.max(photoMetas.length-1,0);
       renderLightbox();
       render();
     };
