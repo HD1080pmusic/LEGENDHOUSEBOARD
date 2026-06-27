@@ -198,6 +198,12 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
   .frame-title{font-size:22px;}
   .who-pill{margin-left:0;width:100%;justify-content:center;}
   .cal-cell{min-height:40px;}
+  .gif-container{ gap:4px; }
+  .gif-item{ width:34px; height:34px; border-radius:5px; }
+}
+@media (max-width:360px){
+  .gif-container{ gap:3px; }
+  .gif-item{ width:28px; height:28px; border-radius:4px; }
 }
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -707,10 +713,46 @@ function openMemberModal(isFirst){
         ${isFirst? `<button class="btn" id="doneMember" style="display:none;">Done adding</button>`:''}
       </div>
       ${isFirst? `<div id="addedList" style="margin-top:12px;font-size:13px;color:var(--ink-soft);"></div>`:''}
+      <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px;">
+        <label>Current housemates</label>
+        <div id="currentMembersList" style="margin-top:6px;"></div>
+      </div>
     </div>`;
   document.body.appendChild(wrap);
   const nameInput = wrap.querySelector('#memberName');
   const addedList = wrap.querySelector('#addedList');
+  const currentList = wrap.querySelector('#currentMembersList');
+
+  function renderCurrentList(){
+    if(state.members.length===0){
+      currentList.innerHTML = `<div style="font-size:13px;color:var(--ink-soft);">No housemates added yet.</div>`;
+      return;
+    }
+    currentList.innerHTML = state.members.map(m=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);">
+        <span style="display:flex;align-items:center;gap:8px;font-size:13.5px;">${avatarHtml(m,'sm')}${escapeHtml(m.name)}</span>
+        <button class="icon-btn" data-delete-id="${m.id}" title="Remove ${escapeHtml(m.name)}" style="color:var(--danger);">Remove</button>
+      </div>
+    `).join('');
+    currentList.querySelectorAll('[data-delete-id]').forEach(btn=>{
+      btn.onclick = ()=>{
+        const id = btn.dataset.deleteId;
+        const m = memberById(id);
+        if(!m) return;
+        if(!confirm(`Remove ${m.name} from the house? Their past chores, bills, and reminders will stay on the board, just no longer linked to a housemate name.`)) return;
+        state.members = state.members.filter(x=>x.id!==id);
+        if(currentUserId===id){
+          currentUserId = null;
+          try{ localStorage.removeItem('house-board-who-am-i'); }catch(e){}
+        }
+        saveState();
+        renderMembersRow();
+        renderCurrentList();
+        render();
+      };
+    });
+  }
+  renderCurrentList();
 
   function addMember(){
     const name = nameInput.value.trim();
@@ -719,13 +761,13 @@ function openMemberModal(isFirst){
     state.members.push({id:uid(), name, color, avatarData:null});
     saveState(); renderMembersRow();
     nameInput.value='';
+    renderCurrentList();
     if(isFirst){
       addedList.innerHTML = 'Added: ' + state.members.map(mm=>escapeHtml(mm.name)).join(', ');
       wrap.querySelector('#doneMember').style.display='inline-block';
       nameInput.focus();
     } else {
-      document.body.removeChild(wrap);
-      if(!currentUserId) openWhoAreYou();
+      nameInput.focus();
     }
     render();
   }
