@@ -183,6 +183,7 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
   .cal-cell{min-height:40px;}
 }
 </style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -227,6 +228,9 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const stateDocRef = doc(db, 'houseboard', 'state');
 let dayPhotoImageCache = {};
+
+const GOOGLE_CLIENT_ID = '526800085021-vbk4amkfvfrh2frao81gb771ob3rh46v.apps.googleusercontent.com';
+const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
 
 const MARKER_COLORS = ['#2E5EAA','#2F9E62','#D6447D','#DB7E1B','#7B4FB0','#1C8C8C'];
 let state = { members: [], chores: [], events: [], reminders: [], expenses: [], dayPhotos: {}, houseRules: [] };
@@ -362,6 +366,57 @@ async function deleteDayPhoto(dateStr, photoMeta){
     if(state.dayPhotos[dateStr].length===0) delete state.dayPhotos[dateStr];
   }
   await saveState();
+}
+
+/* ---------- GOOGLE CALENDAR SYNC ----------
+   Browser-only OAuth (no backend) via Google Identity Services. Each housemate
+   signs in with their own Google account; the access token only lives for this
+   session, so this is an on-demand "sync now" action rather than continuous
+   background sync — there's no server here to silently refresh tokens. */
+function requestGoogleAccessToken(){
+  return new Promise((resolve, reject)=>{
+    if(!window.google || !window.google.accounts || !window.google.accounts.oauth2){
+      reject(new Error("Google sign-in hasn't finished loading yet — try again in a moment."));
+      return;
+    }
+    const client = window.google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: GOOGLE_CALENDAR_SCOPE,
+      callback: (resp)=>{
+        if(!resp || resp.error){ reject(new Error((resp && resp.error) || 'Google sign-in was cancelled or failed.')); return; }
+        resolve(resp.access_token);
+      }
+    });
+    client.requestAccessToken();
+  });
+}
+async function fetchGoogleCalendarEvents(accessToken){
+  const timeMin = new Date(); timeMin.setMonth(timeMin.getMonth()-1);
+  const timeMax = new Date(); timeMax.setMonth(timeMax.getMonth()+6);
+  const params = new URLSearchParams({
+    timeMin: timeMin.toISOString(), timeMax: timeMax.toISOString(),
+    singleEvents: 'true', orderBy: 'startTime', maxResults: '250'
+  });
+  const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  if(!res.ok){ throw new Error('Google Calendar request failed (status '+res.status+')'); }
+  const data = await res.json();
+  return data.items || [];
+}
+function importGoogleEvents(items, importedByMemberId){
+  state.events = state.events || [];
+  let added = 0, updated = 0;
+  items.forEach(item=>{
+    if(!item.start || item.status==='cancelled') return;
+    const dateStr = item.start.date || (item.start.dateTime ? item.start.dateTime.slice(0,10) : null);
+    if(!dateStr) return;
+    const title = item.summary || '(untitled event)';
+    const existing = state.events.find(e=> e.source==='google' && e.sourceId===item.id);
+    if(existing){ existing.title = title; existing.date = dateStr; updated++; }
+    else { state.events.push({ id:uid(), title, date:dateStr, type:'event', source:'google', sourceId:item.id, importedBy:importedByMemberId }); added++; }
+  });
+  return { added, updated };
 }
 
 /* ---------- INIT ---------- */
@@ -978,12 +1033,13 @@ function renderDashboard(){
 function eventRow(e){
   const days = e._days!==undefined? e._days : daysUntil(e.date, e.type==='birthday');
   const label = days===0?'Today':days===1?'Tomorrow':(days>=0?`in ${days}d`:'');
+  const importer = e.source==='google' ? memberById(e.importedBy) : null;
   return `
   <div class="row">
     <span class="tag ${e.type}">${e.type==='birthday'?'🎂':'📌'}</span>
     <div class="row-main">
       <div class="row-title">${escapeHtml(e.title)}</div>
-      <div class="row-sub">${fmtDate(e.date)}${label?' · '+label:''}</div>
+      <div class="row-sub">${fmtDate(e.date)}${label?' · '+label:''}${importer?` · via ${escapeHtml(importer.name)}'s Google Calendar`:''}</div>
     </div>
     <button class="icon-btn" data-action="delete-event" data-id="${e.id}">✕</button>
   </div>`;
@@ -1470,6 +1526,12 @@ function renderCalendar(){
     .filter(e=>e._days>=0 && e._days<=30)
     .sort((a,b)=>a._days-b._days);
   return `
+    <div class="card">
+      <h3>Connect your calendar</h3>
+      <p style="font-size:13px;color:var(--ink-soft);margin:-4px 0 10px;">Each housemate can pull their own Google Calendar events into this board with their own Google sign-in. This is a manual sync, not live — tap it again anytime to pick up new changes.</p>
+      <button class="btn" data-action="sync-google-calendar">Sync Google Calendar</button>
+      <div id="googleSyncStatus" style="font-size:12.5px;color:var(--ink-soft);margin-top:8px;"></div>
+    </div>
     <div class="card">${renderMonthCalendar()}</div>
     <div class="card">
       <h3>${selectedCalDate===todayStr() ? 'Today' : fmtDateFull(selectedCalDate)}</h3>
@@ -1800,6 +1862,26 @@ function attachHandlers(){
     if(!title || !date) return;
     state.events.push({id:uid(), title, date, type:c.querySelector('#eventType').value});
     saveState(); render();
+  };
+
+  const syncGoogleBtn = c.querySelector('[data-action="sync-google-calendar"]');
+  if(syncGoogleBtn) syncGoogleBtn.onclick = async ()=>{
+    const statusEl = c.querySelector('#googleSyncStatus');
+    if(statusEl) statusEl.textContent = 'Connecting to Google…';
+    try{
+      const token = await requestGoogleAccessToken();
+      if(statusEl) statusEl.textContent = 'Fetching events…';
+      const items = await fetchGoogleCalendarEvents(token);
+      const { added, updated } = importGoogleEvents(items, currentUserId);
+      await saveState();
+      render();
+      const freshStatus = document.getElementById('googleSyncStatus');
+      if(freshStatus) freshStatus.textContent = `Synced — added ${added}, updated ${updated} event${(added+updated)===1?'':'s'}.`;
+    } catch(err){
+      console.error('google calendar sync failed', err);
+      alert("Couldn't sync with Google Calendar: " + (err.message || err));
+      if(statusEl) statusEl.textContent = '';
+    }
   };
 
   const addReminderBtn = c.querySelector('[data-action="add-reminder"]');
