@@ -65,7 +65,7 @@ body{
   border-radius:18px; padding:18px 22px; color:#fff;
   box-shadow:var(--shadow); position:relative; overflow:hidden;
 }
-.frame::after{ content:""; position:absolute; inset:0;
+.frame::after{ content:""; position:absolute; inset:0; pointer-events:none;
   background:radial-gradient(circle at 90% 0%, rgba(255,255,255,.06), transparent 60%); }
 .frame-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;}
 .frame-title{ font-family:'Kalam',cursive; font-weight:700; font-size:28px; letter-spacing:.3px; }
