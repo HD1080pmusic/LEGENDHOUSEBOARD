@@ -44,6 +44,7 @@
   --orange:#F2962E;
   --purple:#8C5FD1;
   --teal:#1FA3A3;
+  --lime:#7DAF3C;
   --danger:#D64545;
   --chalk:#F5F2E6;
   --paper-rule:#BFD7EE;
@@ -128,6 +129,7 @@ body{
 .tab.active{background:var(--card);color:var(--ink);box-shadow:var(--shadow);}
 .tab[data-tab="calendar"].active{border-bottom-color:var(--blue);}
 .tab[data-tab="dashboard"].active{border-bottom-color:var(--purple);}
+.tab[data-tab="grocery"].active{border-bottom-color:var(--lime);}
 .tab[data-tab="chores"].active{border-bottom-color:var(--green);}
 .tab[data-tab="reminders"].active{border-bottom-color:var(--orange);}
 .tab[data-tab="bills"].active{border-bottom-color:var(--teal);}
@@ -182,6 +184,10 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
 .check.done{background:var(--green);border-color:var(--green);}
 
 .balance-amt{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:14px;}
+.level-badge{ font-family:'JetBrains Mono',monospace; font-weight:600; font-size:11px; color:#fff;
+  background:var(--purple); border-radius:20px; padding:2px 8px; white-space:nowrap; }
+.xp-bar-track{ background:var(--board-bg2); border-radius:20px; height:6px; width:100%; overflow:hidden; margin-top:5px; }
+.xp-bar-fill{ background:linear-gradient(90deg,var(--purple),var(--pink)); height:100%; border-radius:20px; }
 .pos{color:var(--green);} .neg{color:var(--danger);}
 
 .note{ background:#FFFCEF;border:1px solid #F0E6BE;border-radius:10px; padding:12px 14px;margin-bottom:10px;position:relative; }
@@ -268,6 +274,7 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
   <div class="tabs" id="tabs">
     <button class="tab" data-tab="calendar">📅 Calendar</button>
     <button class="tab" data-tab="dashboard">📊 Dashboard</button>
+    <button class="tab" data-tab="grocery">🛒 Grocery</button>
     <button class="tab" data-tab="chores">🧹 Chores</button>
     <button class="tab" data-tab="reminders">⏰ Reminders</button>
     <button class="tab" data-tab="bills">💵 Bills</button>
@@ -298,7 +305,7 @@ const GOOGLE_CLIENT_ID = '526800085021-vbk4amkfvfrh2frao81gb771ob3rh46v.apps.goo
 const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
 
 const MARKER_COLORS = ['#2E78C9','#3FA86B','#E0508B','#F2962E','#8C5FD1','#1FA3A3'];
-let state = { members: [], chores: [], events: [], reminders: [], expenses: [], dayPhotos: {}, houseRules: [] };
+let state = { members: [], chores: [], events: [], reminders: [], expenses: [], dayPhotos: {}, houseRules: [], groceryItems: [], completionLog: [], taskAssignLog: [], xpLog: [], weeklyScorecard: [] };
 let pendingPhotoDate = null;
 let googleCardCollapsed = true;
 try{ const stored = localStorage.getItem('house-board-google-collapsed'); if(stored!==null) googleCardCollapsed = stored==='true'; }catch(e){}
@@ -341,11 +348,26 @@ function avatarHtml(member, sizeClass=''){
   return `<div class="avatar ${sizeClass}" style="background:${member.color}">${initials(member.name)}</div>`;
 }
 
+function normalizeState(){
+  if(!Array.isArray(state.groceryItems)) state.groceryItems = [];
+  if(!Array.isArray(state.xpLog)) state.xpLog = [];
+  if(!Array.isArray(state.weeklyScorecard)) state.weeklyScorecard = [];
+  // one-time migration of the old flat-rate logs into the unified, source-tagged xpLog
+  if(Array.isArray(state.completionLog) && state.completionLog.length){
+    state.completionLog.forEach(e=> state.xpLog.push({ id:e.id, memberId:e.memberId, source:'chore', label:e.choreTitle, xp:e.xp||10, meta:{choreId:e.choreId}, weekKey:e.weekKey, at:e.completedAt }));
+    state.completionLog = [];
+  }
+  if(Array.isArray(state.taskAssignLog) && state.taskAssignLog.length){
+    state.taskAssignLog.forEach(e=> state.xpLog.push({ id:e.id, memberId:e.fromMemberId, source:'assign', label:'Assigned a task', xp:e.xp||3, weekKey:isoWeekKey(new Date(e.createdAt)), at:e.createdAt }));
+    state.taskAssignLog = [];
+  }
+}
 async function loadState(){
   try{
     const snap = await getDoc(stateDocRef);
     if(snap.exists() && snap.data().json){ state = JSON.parse(snap.data().json); }
   } catch(e){ console.error('load failed', e); }
+  normalizeState();
 }
 async function saveState(){
   try{ await setDoc(stateDocRef, { json: JSON.stringify(state), updatedAt: Date.now() }); }
@@ -358,6 +380,7 @@ function startRealtimeSync(){
     if(!data || !data.json) return;
     try{
       state = JSON.parse(data.json);
+      normalizeState();
       renderMembersRow();
       render();
     } catch(e){ console.error('sync parse failed', e); }
@@ -508,6 +531,7 @@ function importGoogleEvents(items, importedByMemberId){
 async function init(){
   selectedCalDate = todayStr();
   await loadState();
+  if(scoreCompletedWeeks()) await saveState();
   if(!state.importedDefaultChores){
     seedImportedChores();
     state.importedDefaultChores = true;
@@ -809,6 +833,80 @@ function openMemberModal(isFirst){
   }
 }
 
+function openXPKeyModal(){
+  const wrap = document.createElement('div');
+  wrap.className='overlay';
+  const row = (label, xp) => `<div class="row"><div class="row-main"><div class="row-title" style="font-size:13.5px;font-weight:500;">${label}</div></div><span class="tag" style="background:var(--board-bg2);color:var(--ink);font-weight:700;">+${xp} XP</span></div>`;
+  wrap.innerHTML = `
+    <div class="modal">
+      <h3>How XP works</h3>
+      <p style="font-size:13px;color:var(--ink-soft);margin-top:-6px;">Rarer, harder-to-repeat things are worth more. Things that come around constantly are worth less per turn — they add up fast on their own.</p>
+      <div class="section-label" style="margin-top:10px;">Chores — fixed schedule</div>
+      ${row('Daily chore', XP.choreDaily)}
+      ${row('Weekly chore', XP.choreWeekly)}
+      ${row('Monthly chore', XP.choreMonthly)}
+      ${row('One-time chore / assigned task', XP.choreOneTime)}
+      <div class="section-label">Chores — rotating</div>
+      ${row('New turn every 1 week', XP.rotate1wk)}
+      ${row('New turn every 2 weeks', XP.rotate2wk)}
+      ${row('New turn every 3 weeks', XP.rotate3wk)}
+      ${row('New turn every 4+ weeks', XP.rotate4wk)}
+      <div class="section-label">Organizing</div>
+      ${row('Assigning someone a one-off task', XP.assignTask)}
+      ${row('Setting up a new rotating chore', XP.setupRotation)}
+      <div class="section-label">Around the house</div>
+      ${row('Adding a grocery item', XP.groceryAdd)}
+      ${row('Checking off a grocery item', XP.groceryBuy)}
+      ${row('Posting a reminder', XP.reminderPost)}
+      ${row('Following through on a reminder', XP.reminderDone)}
+      ${row('Logging a shared expense', XP.expenseAdd)}
+      ${row('Adding a calendar event', XP.eventAdd)}
+      ${row('Adding a house rule', XP.ruleAdd)}
+      <div class="section-label">Streaks</div>
+      <div class="section-label">Streak status — multiplies ALL XP earned</div>
+      <p style="font-size:12px;color:var(--ink-soft);margin:-2px 0 6px;">A "perfect week" means every chore due that week got done — not just one. Keep that going and your multiplier climbs:</p>
+      ${[...STREAK_TIERS].reverse().map(t=>`<div class="row"><div class="row-main"><div class="row-title" style="font-size:13.5px;font-weight:500;">🔥 ${t.name} — ${t.weeks}+ perfect weeks</div></div><span class="tag" style="background:var(--board-bg2);color:var(--ink);font-weight:700;">×${t.mult}</span></div>`).join('')}
+      <div class="modal-actions"><button class="btn" id="xpKeyClose">Got it</button></div>
+    </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('#xpKeyClose').onclick = ()=> document.body.removeChild(wrap);
+}
+
+function openQuickTaskModal(){
+  const wrap = document.createElement('div');
+  wrap.className='overlay';
+  wrap.innerHTML = `
+    <div class="modal">
+      <h3>Assign a task</h3>
+      <p style="font-size:13px;color:var(--ink-soft);margin-top:-6px;">A quick one-off task for someone — not a recurring chore. Shows up on their dashboard and the chores list until it's done.</p>
+      <div class="form-grid">
+        <div><label>Task</label><input id="qtTitle" placeholder="e.g. Pick up dry cleaning" autofocus></div>
+        <div class="form-row">
+          <div><label>Assign to</label>
+            <select id="qtAssignee"><option value="">Unassigned</option>${state.members.map(m=>`<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('')}</select>
+          </div>
+          <div><label>Due date</label><input id="qtDue" type="date" value="${todayStr()}"></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="qtCancel">Cancel</button>
+        <button class="btn" id="qtSave">Assign task</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('#qtCancel').onclick = ()=> document.body.removeChild(wrap);
+  wrap.querySelector('#qtSave').onclick = ()=>{
+    const title = wrap.querySelector('#qtTitle').value.trim();
+    if(!title) return;
+    const assignee = wrap.querySelector('#qtAssignee').value || null;
+    const dueDate = wrap.querySelector('#qtDue').value || todayStr();
+    state.chores.push({ id:uid(), type:'fixed', title, assignee, frequency:'one-time', dueDate, done:false });
+    logAssignment(currentUserId, XP.assignTask);
+    saveState(); render();
+    document.body.removeChild(wrap);
+  };
+}
+
 function openWhoAreYou(){
   const wrap = document.createElement('div');
   wrap.className='overlay';
@@ -856,6 +954,7 @@ function render(){
   document.querySelectorAll('.tab').forEach(t=> t.classList.toggle('active', t.dataset.tab===activeTab));
   const c = document.getElementById('content');
   if(activeTab==='dashboard') c.innerHTML = renderDashboard();
+  else if(activeTab==='grocery') c.innerHTML = renderGrocery();
   else if(activeTab==='chores') c.innerHTML = renderChores();
   else if(activeTab==='calendar') c.innerHTML = renderCalendar();
   else if(activeTab==='reminders') c.innerHTML = renderReminders();
@@ -871,6 +970,172 @@ function weeksBetween(a,b){
   return Math.floor(ms/(7*86400000));
 }
 function isoDate(d){ return d.toISOString().slice(0,10); }
+function isoWeekKey(d){
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = (date.getUTCDay()+6)%7;
+  date.setUTCDate(date.getUTCDate()-dayNum+3);
+  const firstThursday = new Date(Date.UTC(date.getUTCFullYear(),0,4));
+  const weekNum = 1 + Math.round(((date-firstThursday)/86400000 - 3 + ((firstThursday.getUTCDay()+6)%7))/7);
+  return `${date.getUTCFullYear()}-W${String(weekNum).padStart(2,'0')}`;
+}
+function logXP(memberId, source, label, xp, meta){
+  if(!memberId || !xp) return;
+  const mult = streakMultiplier(memberId);
+  const finalXp = Math.round(xp*mult);
+  state.xpLog.push({ id:uid(), memberId, source, label, xp:finalXp, baseXp:xp, multiplier:mult, meta:meta||null, weekKey:isoWeekKey(new Date()), at:Date.now() });
+}
+function logCompletion(memberId, choreId, choreTitle, xp){
+  logXP(memberId, 'chore', choreTitle, xp, {choreId});
+}
+function logAssignment(fromMemberId, xp){
+  logXP(fromMemberId, 'assign', 'Assigned a task', xp);
+}
+
+/* ---------- STRICT WEEKLY STREAK ----------
+   A "perfect week" means every chore due that week, for that member, got done.
+   Rotating-chore due weeks are fully reconstructable from the anchor/interval math for
+   any past date. Fixed-chore due weeks are read from the chore's CURRENT dueDate, which
+   is only reliable for the week it's currently sitting on — so we score each completed
+   week once, the first time it's seen, and freeze the result rather than recomputing it
+   forever (avoids a fixed chore's later, rolled-forward dueDate retroactively rewriting
+   whether an earlier week looked "perfect"). */
+function isoWeekRange(weekKey){
+  const [yearStr, wStr] = weekKey.split('-W');
+  const year = parseInt(yearStr,10), week = parseInt(wStr,10);
+  const jan4 = new Date(Date.UTC(year,0,4));
+  const jan4Day = (jan4.getUTCDay()+6)%7;
+  const week1Monday = new Date(jan4); week1Monday.setUTCDate(jan4.getUTCDate()-jan4Day);
+  const monday = new Date(week1Monday); monday.setUTCDate(week1Monday.getUTCDate() + (week-1)*7);
+  const sunday = new Date(monday); sunday.setUTCDate(monday.getUTCDate()+6);
+  return { monday, sunday };
+}
+function choresDueInWeek(weekKey){
+  const { monday, sunday } = isoWeekRange(weekKey);
+  const due = [];
+  state.chores.forEach(ch=>{
+    if(ch.type==='rotating'){
+      // use the period that contains the END of this calendar week as the reference —
+      // rotation periods aren't necessarily Monday-aligned, so we check the period's
+      // actual end date against this week's real date range rather than comparing week keys.
+      const st = rotationStatusAt(ch, isoDate(sunday));
+      if(st.needsSetup) return;
+      const periodEndDate = new Date(st.periodEnd+'T00:00:00Z');
+      if(periodEndDate >= monday && periodEndDate <= sunday){
+        due.push({ chore:ch, assigneeIds: st.turnMembers||[] });
+      }
+    } else if(ch.type==='fixed'){
+      if(!ch.assignee) return;
+      const dueDate = new Date(ch.dueDate+'T00:00:00Z');
+      if(dueDate >= monday && dueDate <= sunday){
+        due.push({ chore:ch, assigneeIds:[ch.assignee] });
+      }
+    }
+  });
+  return due;
+}
+function scoreCompletedWeeks(){
+  state.weeklyScorecard = state.weeklyScorecard || [];
+  const currentWeek = isoWeekKey(new Date());
+  let changed = false;
+  state.members.forEach(m=>{
+    for(let i=1;i<=12;i++){
+      const d = new Date(); d.setDate(d.getDate() - 7*i);
+      const wk = isoWeekKey(d);
+      if(wk===currentWeek) continue;
+      if(state.weeklyScorecard.some(s=>s.memberId===m.id && s.weekKey===wk)) break; // already scored, and weeks are scored contiguously
+      const due = choresDueInWeek(wk).filter(x=>x.assigneeIds.includes(m.id));
+      if(due.length===0) continue; // nothing assigned that week — neutral, don't record, don't break the chain
+      const perfect = due.every(x=> state.xpLog.some(e=>e.memberId===m.id && e.source==='chore' && e.weekKey===wk && e.meta && e.meta.choreId===x.chore.id));
+      state.weeklyScorecard.push({ id:uid(), memberId:m.id, weekKey:wk, perfect, dueCount:due.length });
+      changed = true;
+    }
+  });
+  return changed;
+}
+function strictStreak(memberId){
+  const currentWeek = isoWeekKey(new Date());
+  let streak = 0;
+  for(let i=1;i<=52;i++){
+    const d = new Date(); d.setDate(d.getDate() - 7*i);
+    const wk = isoWeekKey(d);
+    if(wk===currentWeek) continue;
+    const entry = state.weeklyScorecard.find(s=>s.memberId===memberId && s.weekKey===wk);
+    if(!entry) continue; // neutral week (nothing due) — bridge over it, doesn't break the streak
+    if(!entry.perfect) break;
+    streak++;
+  }
+  return streak;
+}
+const STREAK_TIERS = [
+  { weeks:8, mult:1.5,  name:'Gold'   },
+  { weeks:4, mult:1.25, name:'Silver' },
+  { weeks:2, mult:1.1,  name:'Bronze' },
+];
+function streakTierFor(weeks){
+  return STREAK_TIERS.find(t=> weeks>=t.weeks) || null;
+}
+function streakMultiplier(memberId){
+  const tier = streakTierFor(strictStreak(memberId));
+  return tier ? tier.mult : 1.0;
+}
+
+/* ---------- XP KEY ----------
+   Recurring chores: more frequent = less XP per turn (it comes around fast anyway).
+   Rarer/one-off things: more XP per completion (real effort, doesn't repeat soon).
+   See choreXPValue() below for the chore-specific tiers. */
+const XP = {
+  choreDaily: 5,        // fixed chore, repeats daily
+  choreWeekly: 10,       // fixed chore, repeats weekly
+  choreMonthly: 25,      // fixed chore, repeats monthly
+  choreOneTime: 20,      // fixed chore/quick task, doesn't repeat
+  rotate1wk: 8,          // rotating chore, new turn every 1 week
+  rotate2wk: 15,         // every 2 weeks
+  rotate3wk: 20,         // every 3 weeks
+  rotate4wk: 25,         // every 4+ weeks
+  assignTask: 3,         // assigning a one-off task to someone
+  setupRotation: 5,      // setting up a new rotating chore (more setup effort)
+  groceryAdd: 1,         // adding an item to the grocery list
+  groceryBuy: 2,         // checking an item off as bought
+  reminderPost: 2,       // posting a reminder for someone
+  reminderDone: 5,       // following through on a reminder
+  expenseAdd: 3,         // logging a shared bill/expense
+  eventAdd: 2,           // adding something to the calendar
+  ruleAdd: 2,            // adding a house rule
+};
+function choreXPValue(ch){
+  if(ch.type==='rotating'){
+    const wk = ch.rotation.intervalWeeks;
+    if(wk>=4) return XP.rotate4wk;
+    if(wk===3) return XP.rotate3wk;
+    if(wk===2) return XP.rotate2wk;
+    return XP.rotate1wk;
+  }
+  if(ch.frequency==='daily') return XP.choreDaily;
+  if(ch.frequency==='weekly') return XP.choreWeekly;
+  if(ch.frequency==='monthly') return XP.choreMonthly;
+  return XP.choreOneTime;
+}
+const XP_PER_LEVEL = 100;
+function memberXP(memberId){
+  const entries = state.xpLog.filter(e=>e.memberId===memberId);
+  const choreCount = entries.filter(e=>e.source==='chore').length;
+  const assignCount = entries.filter(e=>e.source==='assign').length;
+  const streak = strictStreak(memberId);
+  const tier = streakTierFor(streak);
+  const total = entries.reduce((s,e)=>s+e.xp,0);
+  return { total, choreCount, assignCount, streak, tier };
+}
+function levelInfo(xp){
+  const level = 1 + Math.floor(xp/XP_PER_LEVEL);
+  const into = xp % XP_PER_LEVEL;
+  return { level, into, next:XP_PER_LEVEL };
+}
+function leaderboardData(){
+  return state.members.map(m=>{
+    const xp = memberXP(m.id);
+    return { member:m, ...xp, level: levelInfo(xp.total) };
+  }).sort((a,b)=> b.total-a.total);
+}
 function getNextWeekday(targetDow){
   const d = new Date(); d.setHours(0,0,0,0);
   const diff = (targetDow - d.getDay() + 7) % 7;
@@ -888,12 +1153,12 @@ function seedImportedChores(){
     { id:uid(), type:'fixed', title:'Front door & shoe organization + towel restock & laundry', assignee:null, frequency:'weekly', dueDate: today, done:false }
   );
 }
-function rotationStatus(ch){
+function rotationStatusAt(ch, dateStr){
   const r = ch.rotation;
   if(!r.turns || r.turns.length===0){
-    return { periodIndex:0, cycleNumber:0, turnMembers:[], periodStart:todayStr(), periodEnd:todayStr(), needsSetup:true };
+    return { periodIndex:0, cycleNumber:0, turnMembers:[], periodStart:dateStr, periodEnd:dateStr, needsSetup:true };
   }
-  const weeksSince = weeksBetween(r.anchorDate, todayStr());
+  const weeksSince = weeksBetween(r.anchorDate, dateStr);
   const totalWeeksPerCycle = r.intervalWeeks * r.turns.length;
   const safeWeeksSince = Math.max(weeksSince, 0);
   const cycleNumber = Math.floor(safeWeeksSince / totalWeeksPerCycle);
@@ -908,6 +1173,7 @@ function rotationStatus(ch){
   const turnMembers = (ch.periodOverrides && ch.periodOverrides[key]) ? ch.periodOverrides[key] : baseMembers;
   return { periodIndex, cycleNumber, key, turnMembers, periodStart: isoDate(periodStart), periodEnd: isoDate(periodEnd) };
 }
+function rotationStatus(ch){ return rotationStatusAt(ch, todayStr()); }
 function weeklyPlanWeekIndex(plan){
   const w = weeksBetween(plan.anchorDate, todayStr());
   return Math.max(w, 0);
@@ -1141,14 +1407,36 @@ function renderDashboard(){
   const balances = computeBalances();
   const myBalance = currentUserId ? (balances[currentUserId]||0) : null;
 
+  const board = leaderboardData();
+  const medals = ['🥇','🥈','🥉'];
+
   return `
     <div class="card">
       <h3>Today at a glance</h3>
+      <button class="btn ghost" data-action="open-quick-task" style="margin:-4px 0 12px;">📌 Assign a task</button>
       ${dueChores.length===0 && upcomingEvents.length===0 && myReminders.length===0 ? `<div class="empty">Nothing urgent — nice and quiet on the board.</div>` : ''}
       ${dueChores.length>0 ? `<div class="section-label" style="margin-top:4px;">Chores needing attention</div>${dueChores.slice(0,6).map(choreRow).join('')}`:''}
       ${myReminders.length>0 ? `<div class="section-label">Reminders for you</div>${myReminders.slice(0,4).map(reminderNote).join('')}`:''}
       ${upcomingEvents.length>0 ? `<div class="section-label">Coming up</div>${upcomingEvents.slice(0,5).map(eventRow).join('')}`:''}
     </div>
+    ${state.members.length>0 ? `
+    <div class="card">
+      <h3>🏆 Chore leaderboard</h3>
+      <p style="font-size:12px;color:var(--ink-soft);margin-top:-6px;">XP varies by effort — rare chores are worth more than daily ones. A perfect week (everything due, done) builds a streak that multiplies ALL your XP. <button class="icon-btn" data-action="open-xp-key" style="font-size:11px;text-decoration:underline;padding:0;min-width:0;min-height:0;color:var(--blue);">See the full XP key</button></p>
+      ${board.every(b=>b.total===0) ? `<div class="empty">Nobody's earned XP yet — first one on the board gets the crown.</div>` : board.map((b,i)=>`
+        <div class="row" style="align-items:flex-start;">
+          <span style="font-size:18px;width:26px;text-align:center;margin-top:2px;">${medals[i]||''}</span>
+          <span style="display:flex;align-items:center;margin-top:2px;">${avatarHtml(b.member,'sm')}</span>
+          <div class="row-main">
+            <div class="row-title" style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+              ${escapeHtml(b.member.name)} <span class="level-badge">Lv ${b.level.level}</span>
+            </div>
+            <div class="row-sub">${b.choreCount} chore${b.choreCount===1?'':'s'} · ${b.assignCount} task${b.assignCount===1?'':'s'} assigned${b.tier?` · 🔥 ${b.tier.name} streak (×${b.tier.mult})`:b.streak>=1?` · ${b.streak}-wk perfect streak`:''} · <b>${b.total} XP</b></div>${b.tier?`<div style="font-size:11px;color:var(--purple);font-weight:600;margin-top:1px;">Every new task earns ×${b.tier.mult} XP right now!</div>`:''}
+            <div class="xp-bar-track"><div class="xp-bar-fill" style="width:${b.level.into}%;"></div></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>`:''}
     ${currentUserId ? `
     <div class="card">
       <h3>Your balance</h3>
@@ -1196,6 +1484,39 @@ function reminderNote(r){
   </div>`;
 }
 
+/* ---------- GROCERY LIST ---------- */
+function renderGrocery(){
+  const items = [...state.groceryItems].sort((a,b)=> (a.done===b.done) ? b.addedAt-a.addedAt : (a.done?1:-1));
+  const openCount = state.groceryItems.filter(i=>!i.done).length;
+  const checkedCount = state.groceryItems.filter(i=>i.done).length;
+  return `
+    <div class="card">
+      <h3>Add to the list</h3>
+      <div class="form-row">
+        <div><label>Item</label><input id="groceryText" placeholder="e.g. Paper towels" maxlength="80"></div>
+        <div style="flex:0;align-self:end;"><button class="btn" data-action="add-grocery" style="margin-bottom:1px;">Add</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Shopping list ${openCount>0?`<span style="font-family:'Inter',sans-serif;font-weight:600;font-size:13px;color:var(--ink-soft);">(${openCount} to get)</span>`:''}</h3>
+      ${items.length===0?`<div class="empty">Nothing on the list — add what you need above.</div>`:items.map(groceryRow).join('')}
+      ${checkedCount>0?`<button class="btn ghost" data-action="clear-checked-grocery" style="margin-top:10px;">Clear ${checkedCount} checked item${checkedCount===1?'':'s'}</button>`:''}
+    </div>
+  `;
+}
+function groceryRow(item){
+  const adder = memberById(item.addedBy);
+  return `
+  <div class="row">
+    <div class="check ${item.done?'done':''}" data-action="toggle-grocery" data-id="${item.id}">${item.done?'✓':''}</div>
+    <div class="row-main">
+      <div class="row-title" style="${item.done?'text-decoration:line-through;color:var(--ink-soft);':''}">${escapeHtml(item.text)}</div>
+      ${adder?`<div class="row-sub">Added by ${escapeHtml(adder.name)}</div>`:''}
+    </div>
+    <button class="icon-btn" data-action="delete-grocery" data-id="${item.id}">✕</button>
+  </div>`;
+}
+
 /* ---------- CHORES TAB ---------- */
 function renderChores(){
   const sorted = [...state.chores].sort((a,b)=>{
@@ -1208,6 +1529,7 @@ function renderChores(){
       <h3>Chores</h3>
       <p style="font-size:13px;color:var(--ink-soft);margin:-4px 0 10px;">Set chores to a fixed person and schedule, have them rotate on their own, or link several together into one weekly rotation so nobody ever does two chores in the same week.</p>
       <button class="btn" data-action="open-chore-modal">+ Add a chore</button>
+      <button class="btn ghost" data-action="open-quick-task" style="margin-left:8px;">📌 Assign a task</button>
       <button class="btn ghost" data-action="open-weekly-rotation" style="margin-left:8px;">${state.weeklyRotation?'Edit weekly rotation':'Set up weekly rotation (no overlaps)'}</button>
     </div>
     <div class="card">
@@ -1385,6 +1707,7 @@ function openChoreModal(existing){
     } else {
       built.id = uid();
       state.chores.push(built);
+      logAssignment(currentUserId, type==='rotating' ? XP.setupRotation : XP.assignTask);
     }
     saveState();
     document.body.removeChild(wrap);
@@ -1966,6 +2289,7 @@ function openRuleModal(existing){
     } else {
       state.houseRules = state.houseRules || [];
       state.houseRules.push({ id:uid(), title, content, updatedAt:Date.now(), updatedBy:currentUserId });
+      logXP(currentUserId, 'rule_add', title, XP.ruleAdd);
     }
     saveState(); document.body.removeChild(wrap); render();
   };
@@ -1977,6 +2301,10 @@ function attachHandlers(){
 
   const openChoreBtn = c.querySelector('[data-action="open-chore-modal"]');
   if(openChoreBtn) openChoreBtn.onclick = ()=>openChoreModal();
+  const openQuickTaskBtn = c.querySelector('[data-action="open-quick-task"]');
+  if(openQuickTaskBtn) openQuickTaskBtn.onclick = ()=>openQuickTaskModal();
+  const openXPKeyBtn = c.querySelector('[data-action="open-xp-key"]');
+  if(openXPKeyBtn) openXPKeyBtn.onclick = ()=>openXPKeyModal();
   c.querySelectorAll('[data-action="edit-chore"]').forEach(el=> el.onclick = ()=>{
     const ch = state.chores.find(x=>x.id===el.dataset.id);
     if(ch) openChoreModal(ch);
@@ -2034,6 +2362,7 @@ function attachHandlers(){
       if(visibleTo.length===0) visibility = 'private';
     }
     state.events.push({id:uid(), title, date, type:c.querySelector('#eventType').value, visibility, visibleTo, createdBy:currentUserId});
+    logXP(currentUserId, 'event_add', title, XP.eventAdd);
     saveState(); render();
   };
 
@@ -2068,7 +2397,41 @@ function attachHandlers(){
   if(addReminderBtn) addReminderBtn.onclick = ()=>{
     const message = c.querySelector('#reminderMsg').value.trim();
     if(!message) return;
-    state.reminders.push({ id:uid(), message, from: c.querySelector('#reminderFrom').value, to: c.querySelector('#reminderTo').value, done:false, createdAt:Date.now() });
+    const from = c.querySelector('#reminderFrom').value;
+    state.reminders.push({ id:uid(), message, from, to: c.querySelector('#reminderTo').value, done:false, createdAt:Date.now() });
+    logXP(from, 'reminder_post', message, XP.reminderPost);
+    saveState(); render();
+  };
+
+  const addGroceryBtn = c.querySelector('[data-action="add-grocery"]');
+  if(addGroceryBtn){
+    const doAdd = ()=>{
+      const input = c.querySelector('#groceryText');
+      const text = input.value.trim();
+      if(!text) return;
+      state.groceryItems.push({ id:uid(), text, done:false, addedBy:currentUserId, addedAt:Date.now() });
+      logXP(currentUserId, 'grocery_add', text, XP.groceryAdd);
+      saveState(); render();
+    };
+    addGroceryBtn.onclick = doAdd;
+    const groceryInput = c.querySelector('#groceryText');
+    if(groceryInput) groceryInput.addEventListener('keydown', e=>{ if(e.key==='Enter') doAdd(); });
+  }
+  c.querySelectorAll('[data-action="toggle-grocery"]').forEach(el=> el.onclick = ()=>{
+    const item = state.groceryItems.find(i=>i.id===el.dataset.id);
+    if(!item) return;
+    const justBought = !item.done;
+    item.done = justBought;
+    if(justBought) logXP(currentUserId, 'grocery_buy', item.text, XP.groceryBuy);
+    saveState(); render();
+  });
+  c.querySelectorAll('[data-action="delete-grocery"]').forEach(el=> el.onclick = ()=>{
+    state.groceryItems = state.groceryItems.filter(i=>i.id!==el.dataset.id);
+    saveState(); render();
+  });
+  const clearCheckedBtn = c.querySelector('[data-action="clear-checked-grocery"]');
+  if(clearCheckedBtn) clearCheckedBtn.onclick = ()=>{
+    state.groceryItems = state.groceryItems.filter(i=>!i.done);
     saveState(); render();
   };
 
@@ -2083,6 +2446,7 @@ function attachHandlers(){
     const splitAmong = Array.from(c.querySelectorAll('#splitChips .chip.active')).map(ch=>ch.dataset.id);
     if(!description || !amount || amount<=0 || splitAmong.length===0) return;
     state.expenses.push({id:uid(), description, amount, paidBy, splitAmong, createdAt:Date.now(), removed:false, removedAt:null, removedBy:null});
+    logXP(paidBy, 'expense_add', description, XP.expenseAdd);
     saveState(); render();
   };
 
@@ -2097,9 +2461,13 @@ function attachHandlers(){
     } else if(ch.type==='rotating'){
       const st = rotationStatus(ch);
       const key = `${st.cycleNumber}-${st.periodIndex}`;
-      ch.doneForPeriod = ch.doneForPeriod===key ? null : key;
+      const wasDone = ch.doneForPeriod===key;
+      ch.doneForPeriod = wasDone ? null : key;
+      if(!wasDone){ (st.turnMembers||[]).forEach(mid=> logCompletion(mid, ch.id, ch.title, choreXPValue(ch))); }
     } else {
-      ch.done = !ch.done;
+      const justCompleted = !ch.done;
+      ch.done = justCompleted;
+      if(justCompleted) logCompletion(ch.assignee, ch.id, ch.title, choreXPValue(ch));
       if(ch.done && ch.frequency!=='one-time'){
         const next = new Date(ch.dueDate+'T00:00:00');
         if(ch.frequency==='daily') next.setDate(next.getDate()+1);
@@ -2118,7 +2486,12 @@ function attachHandlers(){
     state.events = state.events.filter(x=>x.id!==el.dataset.id); saveState(); render();
   });
   c.querySelectorAll('[data-action="toggle-reminder"]').forEach(el=> el.onclick = ()=>{
-    const r = state.reminders.find(x=>x.id===el.dataset.id); if(r){ r.done=!r.done; saveState(); render(); }
+    const r = state.reminders.find(x=>x.id===el.dataset.id);
+    if(!r) return;
+    const justDone = !r.done;
+    r.done = justDone;
+    if(justDone) logXP(currentUserId, 'reminder_done', r.message, XP.reminderDone);
+    saveState(); render();
   });
   c.querySelectorAll('[data-action="delete-reminder"]').forEach(el=> el.onclick = ()=>{
     state.reminders = state.reminders.filter(x=>x.id!==el.dataset.id); saveState(); render();
