@@ -164,7 +164,8 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
 .cal-title{font-family:'Kalam',cursive;font-weight:700;font-size:19px;}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
 .cal-dow{text-align:center;font-size:11px;font-weight:700;color:var(--ink-soft);padding-bottom:4px;}
-.cal-cell{min-height:54px;border-radius:8px;background:var(--board-bg2);padding:5px 4px;cursor:pointer;}
+.cal-cell{min-height:54px;border-radius:8px;background:var(--board-bg2);padding:5px 4px;cursor:pointer;position:relative;}
+.cal-photo-badge{position:absolute;bottom:3px;right:4px;font-size:10px;line-height:1;}
 .cal-cell.empty{background:transparent;cursor:default;}
 .cal-cell:hover:not(.empty){background:#E7E5DC;}
 .cal-cell.today{box-shadow:inset 0 0 0 2px var(--blue);}
@@ -187,11 +188,12 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
 
 <div id="loadingScreen" class="loading-screen">Setting Prolific up…</div>
 <input type="file" id="avatarFileInput" accept="image/*" style="display:none">
+<input type="file" id="dayPhotoFileInput" accept="image/*" style="display:none">
 
 <div class="app" id="app" style="display:none;">
   <div class="frame">
     <div class="frame-top">
-      <div class="frame-title"><img src="data:image/png;base64,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" alt="" style="width:30px;height:30px;border-radius:8px;vertical-align:-7px;margin-right:8px;">Prolific</div>
+      <div class="frame-title"><img src="data:image/png;base64,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" alt="" style="width:30px;height:30px;border-radius:8px;vertical-align:-7px;margin-right:8px;">Legend House Board</div>
       <div class="frame-date" id="todayDate"></div>
     </div>
     <div class="members-row" id="membersRow"></div>
@@ -203,6 +205,7 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
     <button class="tab" data-tab="chores">Chores</button>
     <button class="tab" data-tab="reminders">Reminders</button>
     <button class="tab" data-tab="bills">Bills</button>
+    <button class="tab" data-tab="rules">Rules</button>
   </div>
 
   <div id="content"></div>
@@ -211,6 +214,7 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+import { getStorage, ref as storageRef, uploadString, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAzUJ7JtySLf-C5KJdjIygvJbRpKw-dfm0",
@@ -223,9 +227,11 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const stateDocRef = doc(db, 'houseboard', 'state');
+const storage = getStorage(fbApp);
 
 const MARKER_COLORS = ['#2E5EAA','#2F9E62','#D6447D','#DB7E1B','#7B4FB0','#1C8C8C'];
-let state = { members: [], chores: [], events: [], reminders: [], expenses: [] };
+let state = { members: [], chores: [], events: [], reminders: [], expenses: [], dayPhotos: {}, houseRules: [] };
+let pendingPhotoDate = null;
 let currentUserId = null;
 let activeTab = 'calendar';
 let viewYear = new Date().getFullYear();
@@ -301,6 +307,44 @@ function fileToResizedDataUrl(file, maxSize=140){
   });
 }
 
+function fileToResizedPhoto(file, maxDim=1600, quality=0.8){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = e=>{
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = ()=>{
+        let w = img.width, h = img.height;
+        if(w>=h){ if(w>maxDim){ h = Math.round(h*maxDim/w); w = maxDim; } }
+        else { if(h>maxDim){ w = Math.round(w*maxDim/h); h = maxDim; } }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+async function uploadDayPhoto(dateStr, file){
+  const dataUrl = await fileToResizedPhoto(file);
+  const path = `day-photos/${dateStr}/${uid()}.jpg`;
+  const sref = storageRef(storage, path);
+  await uploadString(sref, dataUrl, 'data_url');
+  const url = await getDownloadURL(sref);
+  return { id: uid(), path, url, addedBy: currentUserId, addedAt: Date.now() };
+}
+async function deleteDayPhoto(dateStr, photo){
+  try{ await deleteObject(storageRef(storage, photo.path)); } catch(e){ console.error('storage delete failed', e); }
+  if(state.dayPhotos && state.dayPhotos[dateStr]){
+    state.dayPhotos[dateStr] = state.dayPhotos[dateStr].filter(p=>p.id!==photo.id);
+    if(state.dayPhotos[dateStr].length===0) delete state.dayPhotos[dateStr];
+  }
+  await saveState();
+}
+
 /* ---------- INIT ---------- */
 async function init(){
   selectedCalDate = todayStr();
@@ -335,10 +379,52 @@ async function init(){
 
   document.getElementById('avatarFileInput').addEventListener('change', async (e)=>{
     const file = e.target.files[0];
-    if(!file || !pendingAvatarMemberId) return;
-    const dataUrl = await fileToResizedDataUrl(file);
-    const m = memberById(pendingAvatarMemberId);
-    if(m){ m.avatarData = dataUrl; await saveState(); renderMembersRow(); render(); }
+    if(!file || !pendingAvatarMemberId){ e.target.value=''; return; }
+    if(!file.type.startsWith('image/')){
+      alert("That file doesn't look like a photo. Try a JPEG or PNG.");
+      e.target.value=''; return;
+    }
+    if(file.size > 15*1024*1024){
+      alert("That photo is too large (over 15MB). Try a smaller photo or a screenshot of it.");
+      e.target.value=''; return;
+    }
+    try{
+      const dataUrl = await fileToResizedDataUrl(file);
+      const m = memberById(pendingAvatarMemberId);
+      if(!m){ alert("Couldn't find that housemate anymore — try again."); e.target.value=''; return; }
+      m.avatarData = dataUrl;
+      await saveState();
+      renderMembersRow();
+      render();
+    } catch(err){
+      console.error('avatar upload failed', err);
+      alert("Couldn't load that photo. Try a different one (JPEG or PNG works best) — some photo formats from phones (like HEIC) aren't supported by every browser.");
+    }
+    e.target.value = '';
+  });
+
+  document.getElementById('dayPhotoFileInput').addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file || !pendingPhotoDate){ e.target.value=''; return; }
+    if(!file.type.startsWith('image/')){
+      alert("That file doesn't look like a photo. Try a JPEG or PNG.");
+      e.target.value=''; return;
+    }
+    if(file.size > 20*1024*1024){
+      alert("That photo is too large (over 20MB). Try a smaller photo.");
+      e.target.value=''; return;
+    }
+    try{
+      const rec = await uploadDayPhoto(pendingPhotoDate, file);
+      state.dayPhotos = state.dayPhotos || {};
+      state.dayPhotos[pendingPhotoDate] = state.dayPhotos[pendingPhotoDate] || [];
+      state.dayPhotos[pendingPhotoDate].push(rec);
+      await saveState();
+      render();
+    } catch(err){
+      console.error('photo upload failed', err);
+      alert("Couldn't upload that photo. Make sure Firebase Storage is set up, and check your connection.");
+    }
     e.target.value = '';
   });
 
@@ -567,6 +653,7 @@ function render(){
   else if(activeTab==='calendar') c.innerHTML = renderCalendar();
   else if(activeTab==='reminders') c.innerHTML = renderReminders();
   else if(activeTab==='bills') c.innerHTML = renderBills();
+  else if(activeTab==='rules') c.innerHTML = renderRules();
   attachHandlers();
   renderMembersRow();
 }
@@ -609,7 +696,10 @@ function rotationStatus(ch){
   const periodStart = new Date(r.anchorDate+'T00:00:00');
   periodStart.setDate(periodStart.getDate() + periodStartWeeks*7);
   const periodEnd = new Date(periodStart); periodEnd.setDate(periodEnd.getDate() + r.intervalWeeks*7 - 1);
-  return { periodIndex, cycleNumber, turnMembers: r.turns[periodIndex] || [], periodStart: isoDate(periodStart), periodEnd: isoDate(periodEnd) };
+  const key = `${cycleNumber}-${periodIndex}`;
+  const baseMembers = r.turns[periodIndex] || [];
+  const turnMembers = (ch.periodOverrides && ch.periodOverrides[key]) ? ch.periodOverrides[key] : baseMembers;
+  return { periodIndex, cycleNumber, key, turnMembers, periodStart: isoDate(periodStart), periodEnd: isoDate(periodEnd) };
 }
 function weeklyPlanWeekIndex(plan){
   const w = weeksBetween(plan.anchorDate, todayStr());
@@ -621,7 +711,7 @@ function weeklyPlanPeriod(plan){
   const end = new Date(start); end.setDate(end.getDate()+6);
   return { weekIndex:w, periodStart: isoDate(start), periodEnd: isoDate(end) };
 }
-function weeklyPlanSlice(plan, roleIdx){
+function weeklyPlanSlice(plan, roleIdx, choreId){
   const N = plan.order.length;
   if(N===0) return [];
   const w = weeklyPlanWeekIndex(plan);
@@ -629,7 +719,12 @@ function weeklyPlanSlice(plan, roleIdx){
   const rotated = plan.order.slice(shift).concat(plan.order.slice(0, shift));
   let offset = 0;
   for(let i=0;i<roleIdx;i++) offset += plan.roles[i].slots;
-  return rotated.slice(offset, offset + plan.roles[roleIdx].slots);
+  const baseSlice = rotated.slice(offset, offset + plan.roles[roleIdx].slots);
+  if(choreId){
+    const ch = state.chores.find(c=>c.id===choreId);
+    if(ch && ch.weekOverrides && ch.weekOverrides[w]) return ch.weekOverrides[w];
+  }
+  return baseSlice;
 }
 function isChoreDone(ch){
   if(ch.type==='linked'){
@@ -668,7 +763,7 @@ function choreRow(ch){
       </div>`;
     }
     const roleIdx = plan.roles.findIndex(r=>r.choreId===ch.id);
-    const members = roleIdx>=0 ? weeklyPlanSlice(plan, roleIdx) : [];
+    const members = roleIdx>=0 ? weeklyPlanSlice(plan, roleIdx, ch.id) : [];
     const avatarsHtml = members.map(id=>avatarHtml(memberById(id),'sm')).join('');
     const names = members.map(id=>memberById(id)?.name||'?').join(' & ');
     return `
@@ -680,6 +775,7 @@ function choreRow(ch){
         <div class="row-sub">${escapeHtml(names)} · this week · weekly rotation</div>
       </div>
       <span class="tag ${overdue?'overdue':(eff===todayStr()?'today':'')}">${fmtDate(eff)}</span>
+      <button class="icon-btn" data-action="swap-chore" data-id="${ch.id}" title="Swap">⇄</button>
       <button class="icon-btn" data-action="edit-chore" data-id="${ch.id}">✎</button>
       <button class="icon-btn" data-action="delete-chore" data-id="${ch.id}">✕</button>
     </div>`;
@@ -696,6 +792,7 @@ function choreRow(ch){
           <div class="row-sub">Rotates every ${ch.rotation.intervalWeeks===1?'week':ch.rotation.intervalWeeks+' wks'} · housemates not set yet</div>
         </div>
         <span class="tag today">Set up</span>
+        <button class="icon-btn" data-action="swap-chore" data-id="${ch.id}" title="Assign">⇄</button>
         <button class="icon-btn" data-action="edit-chore" data-id="${ch.id}">✎</button>
         <button class="icon-btn" data-action="delete-chore" data-id="${ch.id}">✕</button>
       </div>`;
@@ -712,6 +809,7 @@ function choreRow(ch){
         <div class="row-sub">${subtitle}</div>
       </div>
       <span class="tag ${overdue?'overdue':(eff===todayStr()?'today':'')}">${fmtDate(eff)}</span>
+      <button class="icon-btn" data-action="swap-chore" data-id="${ch.id}" title="Swap">⇄</button>
       <button class="icon-btn" data-action="edit-chore" data-id="${ch.id}">✎</button>
       <button class="icon-btn" data-action="delete-chore" data-id="${ch.id}">✕</button>
     </div>`;
@@ -726,9 +824,103 @@ function choreRow(ch){
       <div class="row-sub">${assignee?escapeHtml(assignee.name):'Unassigned'} · ${ch.frequency}</div>
     </div>
     <span class="tag ${overdue?'overdue':(eff===todayStr()?'today':'')}">${fmtDate(eff)}</span>
+    <button class="icon-btn" data-action="swap-chore" data-id="${ch.id}" title="Swap">⇄</button>
     <button class="icon-btn" data-action="edit-chore" data-id="${ch.id}">✎</button>
     <button class="icon-btn" data-action="delete-chore" data-id="${ch.id}">✕</button>
   </div>`;
+}
+
+function openSwapModal(ch){
+  let currentMembers = [];
+  let roleIdx = -1, plan = null;
+  if(ch.type==='fixed'){
+    currentMembers = ch.assignee ? [ch.assignee] : [];
+  } else if(ch.type==='rotating'){
+    const st = rotationStatus(ch);
+    currentMembers = st.needsSetup ? [] : st.turnMembers;
+  } else if(ch.type==='linked'){
+    plan = state.weeklyRotation;
+    if(!plan){ return; }
+    roleIdx = plan.roles.findIndex(r=>r.choreId===ch.id);
+    currentMembers = roleIdx>=0 ? weeklyPlanSlice(plan, roleIdx, ch.id) : [];
+  }
+
+  function applySwap(slotIdx, newId){
+    if(ch.type==='fixed'){
+      ch.assignee = newId;
+    } else if(ch.type==='rotating'){
+      const st = rotationStatus(ch);
+      const base = st.needsSetup ? [] : [...st.turnMembers];
+      base[slotIdx] = newId;
+      ch.periodOverrides = ch.periodOverrides || {};
+      const key = st.needsSetup ? null : st.key;
+      if(key) ch.periodOverrides[key] = base;
+      else { ch.rotation.turns = ch.rotation.turns && ch.rotation.turns.length ? ch.rotation.turns : [[]]; ch.rotation.turns[0] = base; }
+    } else if(ch.type==='linked'){
+      const weekIdx = weeklyPlanWeekIndex(plan);
+      const base = [...currentMembers];
+      base[slotIdx] = newId;
+      ch.weekOverrides = ch.weekOverrides || {};
+      ch.weekOverrides[weekIdx] = base;
+    }
+    saveState();
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className='overlay';
+  wrap.innerHTML = `<div class="modal"></div>`;
+  document.body.appendChild(wrap);
+
+  function renderBody(){
+    const available = state.members.filter(m=>!currentMembers.includes(m.id));
+    wrap.querySelector('.modal').innerHTML = `
+      <h3>Swap — ${escapeHtml(ch.title)}</h3>
+      <p style="font-size:13px;color:var(--ink-soft);margin-top:-6px;">${ch.type==='fixed'?'Reassign this chore.':'This only changes this turn — the regular rotation continues normally after.'}</p>
+      <div class="section-label" style="margin-top:10px;">Currently on this chore</div>
+      ${currentMembers.length===0 ? `<div class="empty">Nobody assigned yet.</div>` :
+        currentMembers.map((id,i)=>{
+          const m = memberById(id);
+          return `<div class="row">
+            ${avatarHtml(m,'sm')}
+            <div class="row-main row-title">${m?escapeHtml(m.name):'?'}</div>
+            <button class="btn ghost" data-swapslot="${i}">⇄ Swap</button>
+          </div>`;
+        }).join('')}
+      ${currentMembers.length===0 ? `
+        <div class="section-label">Assign to</div>
+        <div class="chip-select" id="assignChips">
+          ${state.members.map(m=>`<div class="chip" data-id="${m.id}" style="border-color:${m.color}">${escapeHtml(m.name)}</div>`).join('')}
+        </div>
+      `:''}
+      <div id="swapPickWrap" style="display:none;margin-top:10px;">
+        <div class="section-label">Swap in</div>
+        <div class="chip-select" id="swapChips">
+          ${available.map(m=>`<div class="chip" data-id="${m.id}" style="border-color:${m.color}">${escapeHtml(m.name)}</div>`).join('')}
+        </div>
+      </div>
+      <div class="modal-actions"><button class="btn ghost" id="cancelSwap">Close</button></div>
+    `;
+    wrap.querySelector('#cancelSwap').onclick = ()=> document.body.removeChild(wrap);
+    const assignChips = wrap.querySelector('#assignChips');
+    if(assignChips) assignChips.querySelectorAll('.chip').forEach(chip=>{
+      chip.onclick = ()=>{ applySwap(0, chip.dataset.id); document.body.removeChild(wrap); render(); };
+    });
+    wrap.querySelectorAll('[data-swapslot]').forEach(btn=>{
+      btn.onclick = ()=>{
+        const slotIdx = +btn.dataset.swapslot;
+        const pickWrap = wrap.querySelector('#swapPickWrap');
+        pickWrap.style.display = 'block';
+        pickWrap.querySelectorAll('.chip').forEach(chip=>{
+          chip.onclick = ()=>{
+            applySwap(slotIdx, chip.dataset.id);
+            document.body.removeChild(wrap);
+            render();
+          };
+        });
+      };
+    });
+  }
+  renderBody();
 }
 
 /* ---------- DASHBOARD ---------- */
@@ -1229,9 +1421,11 @@ function renderMonthCalendar(){
     const dayEvents = state.events.filter(e=> e.type==='birthday' ? e.date.slice(5,10)===dateStr.slice(5,10) : e.date===dateStr);
     const isToday = dateStr === todayStr();
     const isSelected = dateStr === selectedCalDate;
+    const hasPhotos = !!(state.dayPhotos && state.dayPhotos[dateStr] && state.dayPhotos[dateStr].length>0);
     cells += `<div class="cal-cell ${isToday?'today':''} ${isSelected?'selected':''}" data-date="${dateStr}">
       <div class="cal-daynum">${d}</div>
       <div class="cal-dots">${dayEvents.slice(0,4).map(e=>`<span class="cal-dot ${e.type}"></span>`).join('')}</div>
+      ${hasPhotos?`<div class="cal-photo-badge">📷</div>`:''}
     </div>`;
   }
   return `
@@ -1247,6 +1441,7 @@ function renderMonthCalendar(){
 }
 function renderCalendar(){
   const dayEvents = state.events.filter(e=> e.type==='birthday' ? e.date.slice(5,10)===selectedCalDate.slice(5,10) : e.date===selectedCalDate);
+  const dayPhotos = (state.dayPhotos && state.dayPhotos[selectedCalDate]) || [];
   const sortedUpcoming = [...state.events]
     .map(e=>({...e,_days:daysUntil(e.date, e.type==='birthday')}))
     .filter(e=>e._days>=0 && e._days<=30)
@@ -1269,12 +1464,54 @@ function renderCalendar(){
         <div><label>Date</label><input id="eventDate" type="date" value="${selectedCalDate}"></div>
       </div>
       <button class="btn" data-action="add-event">Add to calendar</button>
+      <div class="section-label" style="margin-top:18px;">Photos from this day</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        ${dayPhotos.map(p=>`<img src="${p.url}" data-action="view-photo" data-photo-id="${p.id}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;cursor:pointer;" alt="">`).join('')}
+        <div data-action="add-day-photo" style="width:72px;height:72px;border-radius:8px;border:2px dashed var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-soft);font-size:24px;">+</div>
+      </div>
     </div>
     <div class="card">
       <h3>Next 30 days</h3>
       ${sortedUpcoming.length===0?`<div class="empty">Nothing on the calendar yet.</div>`:sortedUpcoming.map(eventRow).join('')}
     </div>
   `;
+}
+
+function openPhotoLightbox(dateStr, photoId){
+  const photos = (state.dayPhotos && state.dayPhotos[dateStr]) || [];
+  let idx = Math.max(photos.findIndex(p=>p.id===photoId), 0);
+  const wrap = document.createElement('div');
+  wrap.className='overlay';
+  document.body.appendChild(wrap);
+  function renderLightbox(){
+    if(photos.length===0){ document.body.removeChild(wrap); render(); return; }
+    const p = photos[idx];
+    wrap.innerHTML = `
+      <div class="modal" style="max-width:520px;text-align:center;">
+        <img src="${p.url}" style="max-width:100%;max-height:55vh;border-radius:10px;object-fit:contain;" alt="">
+        <div style="font-size:12px;color:var(--ink-soft);margin-top:8px;">${fmtDateFull(dateStr)}${photos.length>1?` · ${idx+1} of ${photos.length}`:''}</div>
+        <div class="modal-actions" style="justify-content:space-between;">
+          <div>${photos.length>1?`<button class="icon-btn" data-nav="prev">‹</button><button class="icon-btn" data-nav="next">›</button>`:''}</div>
+          <div>
+            <button class="btn ghost" id="deletePhotoBtn" style="color:var(--danger);border-color:var(--danger);">Delete</button>
+            <button class="btn" id="closeLightbox">Close</button>
+          </div>
+        </div>
+      </div>`;
+    wrap.querySelector('#closeLightbox').onclick = ()=> document.body.removeChild(wrap);
+    const prevBtn = wrap.querySelector('[data-nav="prev"]');
+    if(prevBtn) prevBtn.onclick = ()=>{ idx = (idx-1+photos.length)%photos.length; renderLightbox(); };
+    const nextBtn = wrap.querySelector('[data-nav="next"]');
+    if(nextBtn) nextBtn.onclick = ()=>{ idx = (idx+1)%photos.length; renderLightbox(); };
+    wrap.querySelector('#deletePhotoBtn').onclick = async ()=>{
+      await deleteDayPhoto(dateStr, p);
+      photos.splice(idx,1);
+      if(idx>=photos.length) idx = Math.max(photos.length-1,0);
+      renderLightbox();
+      render();
+    };
+  }
+  renderLightbox();
 }
 
 /* ---------- REMINDERS ---------- */
@@ -1420,6 +1657,73 @@ function renderBills(){
   `;
 }
 
+/* ---------- HOUSE RULES & DOCS ---------- */
+function renderRules(){
+  const sorted = [...(state.houseRules||[])].sort((a,b)=>b.updatedAt-a.updatedAt);
+  return `
+    <div class="card">
+      <h3>House Rules & Docs</h3>
+      <p style="font-size:13px;color:var(--ink-soft);margin:-4px 0 10px;">Wifi password, landlord contact, quiet hours, move-out checklist — whatever everyone needs to find fast.</p>
+      <button class="btn" data-action="open-rule-modal">+ Add a rule or doc</button>
+    </div>
+    ${sorted.length===0?`<div class="card"><div class="empty">Nothing posted yet.</div></div>`:sorted.map(ruleCard).join('')}
+  `;
+}
+function ruleCard(rule){
+  const author = memberById(rule.updatedBy);
+  return `
+  <div class="card" style="margin-bottom:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+      <div style="font-weight:700;font-family:'Kalam',cursive;font-size:17px;">${escapeHtml(rule.title)}</div>
+      <div style="display:flex;gap:2px;flex:none;">
+        <button class="icon-btn" data-action="edit-rule" data-id="${rule.id}">✎</button>
+        <button class="icon-btn" data-action="delete-rule" data-id="${rule.id}">✕</button>
+      </div>
+    </div>
+    <div style="font-size:14px;white-space:pre-wrap;margin-top:6px;line-height:1.5;">${escapeHtml(rule.content)}</div>
+    ${author?`<div style="font-size:11px;color:var(--ink-soft);margin-top:10px;">Updated by ${escapeHtml(author.name)}</div>`:''}
+  </div>`;
+}
+function openRuleModal(existing){
+  const isEdit = !!existing;
+  const wrap = document.createElement('div');
+  wrap.className='overlay';
+  wrap.innerHTML = `
+    <div class="modal">
+      <h3>${isEdit?'Edit':'Add'} a rule or doc</h3>
+      <div class="form-grid">
+        <div><label>Title</label><input id="ruleTitle" placeholder="e.g. WiFi password" value="${isEdit?escapeHtml(existing.title):''}"></div>
+        <div><label>Details</label><textarea id="ruleContent" rows="5" placeholder="e.g. Network: HouseNet — Password: ...">${isEdit?escapeHtml(existing.content):''}</textarea></div>
+      </div>
+      <div id="ruleError" class="error-text" style="display:none;"></div>
+      <div class="modal-actions">
+        ${isEdit?`<button class="btn ghost" id="deleteRuleBtn" style="color:var(--danger);border-color:var(--danger);">Delete</button>`:''}
+        <button class="btn ghost" id="cancelRule">Cancel</button>
+        <button class="btn" id="saveRule">${isEdit?'Save changes':'Add'}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('#cancelRule').onclick = ()=> document.body.removeChild(wrap);
+  if(isEdit){
+    wrap.querySelector('#deleteRuleBtn').onclick = ()=>{
+      state.houseRules = (state.houseRules||[]).filter(r=>r.id!==existing.id);
+      saveState(); document.body.removeChild(wrap); render();
+    };
+  }
+  wrap.querySelector('#saveRule').onclick = ()=>{
+    const title = wrap.querySelector('#ruleTitle').value.trim();
+    const content = wrap.querySelector('#ruleContent').value.trim();
+    if(!title){ const el=wrap.querySelector('#ruleError'); el.textContent='Give it a title.'; el.style.display='block'; return; }
+    if(isEdit){
+      existing.title = title; existing.content = content; existing.updatedAt = Date.now(); existing.updatedBy = currentUserId;
+    } else {
+      state.houseRules = state.houseRules || [];
+      state.houseRules.push({ id:uid(), title, content, updatedAt:Date.now(), updatedBy:currentUserId });
+    }
+    saveState(); document.body.removeChild(wrap); render();
+  };
+}
+
 /* ---------- EVENT HANDLERS ---------- */
 function attachHandlers(){
   const c = document.getElementById('content');
@@ -1430,14 +1734,34 @@ function attachHandlers(){
     const ch = state.chores.find(x=>x.id===el.dataset.id);
     if(ch) openChoreModal(ch);
   });
+  c.querySelectorAll('[data-action="swap-chore"]').forEach(el=> el.onclick = ()=>{
+    const ch = state.chores.find(x=>x.id===el.dataset.id);
+    if(ch) openSwapModal(ch);
+  });
   const openWeeklyBtn = c.querySelector('[data-action="open-weekly-rotation"]');
   if(openWeeklyBtn) openWeeklyBtn.onclick = openWeeklyRotationModal;
+
+  const openRuleBtn = c.querySelector('[data-action="open-rule-modal"]');
+  if(openRuleBtn) openRuleBtn.onclick = ()=>openRuleModal();
+  c.querySelectorAll('[data-action="edit-rule"]').forEach(el=> el.onclick = ()=>{
+    const r = (state.houseRules||[]).find(x=>x.id===el.dataset.id);
+    if(r) openRuleModal(r);
+  });
+  c.querySelectorAll('[data-action="delete-rule"]').forEach(el=> el.onclick = ()=>{
+    state.houseRules = (state.houseRules||[]).filter(x=>x.id!==el.dataset.id);
+    saveState(); render();
+  });
 
   const calPrev = c.querySelector('[data-action="cal-prev"]');
   if(calPrev) calPrev.onclick = ()=>{ viewMonth--; if(viewMonth<0){viewMonth=11;viewYear--;} render(); };
   const calNext = c.querySelector('[data-action="cal-next"]');
   if(calNext) calNext.onclick = ()=>{ viewMonth++; if(viewMonth>11){viewMonth=0;viewYear++;} render(); };
   c.querySelectorAll('.cal-cell[data-date]').forEach(cell=> cell.onclick = ()=>{ selectedCalDate = cell.dataset.date; render(); });
+  const addPhotoBtn = c.querySelector('[data-action="add-day-photo"]');
+  if(addPhotoBtn) addPhotoBtn.onclick = ()=>{ pendingPhotoDate = selectedCalDate; document.getElementById('dayPhotoFileInput').click(); };
+  c.querySelectorAll('[data-action="view-photo"]').forEach(img=>{
+    img.onclick = ()=> openPhotoLightbox(selectedCalDate, img.dataset.photoId);
+  });
 
   const addEventBtn = c.querySelector('[data-action="add-event"]');
   if(addEventBtn) addEventBtn.onclick = ()=>{
