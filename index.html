@@ -15,6 +15,20 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
+/* GIF Section Styling */
+.title-container { display: flex; flex-direction: column; gap: 8px; }
+.gif-container { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.gif-item { 
+  width: 42px; 
+  height: 42px; 
+  border-radius: 6px; 
+  object-fit: cover; 
+  background: transparent; 
+  box-shadow: none; 
+}
+.gif-trunks { object-position: top; } /* Shifts Trunks upward so he isn't cropped */
+.gif-piccolo { object-position: top; } /* Piccolo's gif is tall, so keep his head/torso in frame */
+
 :root{
   --board-bg:#F6F5F0;
   --board-bg2:#EFEEE8;
@@ -136,6 +150,9 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
   cursor:pointer;background:#fff;color:var(--ink-soft);user-select:none; }
 .chip.active{border-color:transparent;color:#fff;}
 .chip:active{opacity:.75;}
+.who-chip{display:flex;align-items:center;gap:7px;padding:6px 13px 6px 6px;}
+.who-chip-avatar{cursor:pointer;display:flex;}
+.who-chip-name{cursor:pointer;}
 
 .check{ width:24px;height:24px;border-radius:50%;border:2px solid var(--line);
   display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;font-size:13px;color:#fff; }
@@ -194,7 +211,19 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
 <div class="app" id="app" style="display:none;">
   <div class="frame">
     <div class="frame-top">
-      <div class="frame-title"><img src="data:image/png;base64,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" alt="" style="width:30px;height:30px;border-radius:8px;vertical-align:-7px;margin-right:8px;">Legend House Board</div>
+      <div class="title-container">
+  <div class="frame-title">Legend House Board</div>
+  <div class="gif-container">
+    <img src="totoro-jumping.gif" alt="Totoro" class="gif-item">
+    <img src="Naruto Kurama GIF.gif" alt="Kurama" class="gif-item">
+    <img src="Cinamoroll GIF.gif" alt="Cinamoroll" class="gif-item">
+    <img src="Kuromi GIF.gif" alt="Kuromi" class="gif-item">
+    <img src="Zoro GIF.gif" alt="Zoro" class="gif-item">
+    <img src="Trunks GIF.gif" alt="Trunks" class="gif-item gif-trunks">
+    <img src="Hello Kitty GIF.gif" alt="Hello Kitty" class="gif-item">
+    <img src="Piccolo GIF.gif" alt="Piccolo" class="gif-item gif-piccolo">
+  </div>
+</div>
       <div class="frame-date" id="todayDate"></div>
     </div>
     <div class="members-row" id="membersRow"></div>
@@ -235,12 +264,15 @@ const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly
 const MARKER_COLORS = ['#2E5EAA','#2F9E62','#D6447D','#DB7E1B','#7B4FB0','#1C8C8C'];
 let state = { members: [], chores: [], events: [], reminders: [], expenses: [], dayPhotos: {}, houseRules: [] };
 let pendingPhotoDate = null;
+let googleCardCollapsed = true;
+try{ const stored = localStorage.getItem('house-board-google-collapsed'); if(stored!==null) googleCardCollapsed = stored==='true'; }catch(e){}
 let currentUserId = null;
 let activeTab = 'calendar';
 let viewYear = new Date().getFullYear();
 let viewMonth = new Date().getMonth();
 let selectedCalDate = null;
 let pendingAvatarMemberId = null;
+let activeWhoAreYouRefresh = null;
 let modalTurns = [[]];
 
 const uid = () => Math.random().toString(36).slice(2,10);
@@ -299,19 +331,27 @@ function startRealtimeSync(){
 /* ---------- avatar upload ---------- */
 function fileToResizedDataUrl(file, maxSize=140){
   return new Promise((resolve,reject)=>{
+    let settled = false;
+    const done = (fn, val)=>{ if(settled) return; settled = true; clearTimeout(timer); fn(val); };
+    // Some iPhone photos (HEIC) can stall silently mid-decode in Safari without
+    // ever firing onload or onerror — this timeout turns that silent hang into
+    // a visible error instead of the upload just appearing to do nothing.
+    const timer = setTimeout(()=> done(reject, new Error('decode-timeout')), 8000);
     const reader = new FileReader();
-    reader.onerror = reject;
+    reader.onerror = ()=> done(reject, reader.error);
     reader.onload = e=>{
       const img = new Image();
-      img.onerror = reject;
+      img.onerror = ()=> done(reject, new Error('image-decode-failed'));
       img.onload = ()=>{
-        const side = Math.min(img.width, img.height);
-        const sx = (img.width-side)/2, sy=(img.height-side)/2;
-        const canvas = document.createElement('canvas');
-        canvas.width = maxSize; canvas.height = maxSize;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, sx, sy, side, side, 0, 0, maxSize, maxSize);
-        resolve(canvas.toDataURL('image/jpeg', 0.85));
+        try{
+          const side = Math.min(img.width, img.height);
+          const sx = (img.width-side)/2, sy=(img.height-side)/2;
+          const canvas = document.createElement('canvas');
+          canvas.width = maxSize; canvas.height = maxSize;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, sx, sy, side, side, 0, 0, maxSize, maxSize);
+          done(resolve, canvas.toDataURL('image/jpeg', 0.85));
+        }catch(err){ done(reject, err); }
       };
       img.src = e.target.result;
     };
@@ -478,6 +518,7 @@ async function init(){
       m.avatarData = dataUrl;
       await saveState();
       renderMembersRow();
+      if(activeWhoAreYouRefresh) activeWhoAreYouRefresh();
       render();
     } catch(err){
       console.error('avatar upload failed', err);
@@ -525,20 +566,12 @@ async function init(){
 function renderMembersRow(){
   const row = document.getElementById('membersRow');
   const notifs = getNotifications();
-  row.innerHTML = state.members.map(m=>`
-    <div class="name-tag" title="Click photo to add/change">
-      <span data-avatar-id="${m.id}">${avatarHtml(m)}</span>
-      ${escapeHtml(m.name)}
-    </div>
-  `).join('') + `<div class="avatar add" id="addMemberBtn" title="Add housemate">+</div>` +
+  row.innerHTML = `<div class="avatar add" id="addMemberBtn" title="Add housemate">+</div>` +
   `<div class="bell-btn" id="notifBell" title="Notifications">🔔${notifs.length>0?`<span class="badge">${notifs.length}</span>`:''}</div>` +
   `<div class="who-pill" id="whoPill">You: ${currentUserId ? escapeHtml(memberById(currentUserId)?.name||'?') : 'choose'} ✎</div>`;
   document.getElementById('addMemberBtn').onclick = ()=>openMemberModal(false);
   document.getElementById('whoPill').onclick = openWhoAreYou;
   document.getElementById('notifBell').onclick = openNotificationsModal;
-  row.querySelectorAll('[data-avatar-id]').forEach(el=>{
-    el.onclick = ()=>{ pendingAvatarMemberId = el.dataset.avatarId; document.getElementById('avatarFileInput').click(); };
-  });
 }
 
 /* ---------- IN-APP NOTIFICATIONS ----------
@@ -710,21 +743,40 @@ function openWhoAreYou(){
   wrap.innerHTML = `
     <div class="modal">
       <h3>Which housemate are you?</h3>
-      <p style="font-size:13px;color:var(--ink-soft);margin-top:-6px;">This personalizes the dashboard and reminders, and is remembered on this device — you won't be asked again unless you switch.</p>
+      <p style="font-size:13px;color:var(--ink-soft);margin-top:-6px;">This personalizes the dashboard and reminders, and is remembered on this device — you won't be asked again unless you switch. Tap your photo to add or change it.</p>
       <div class="chip-select" id="whoChips" style="margin-top:10px;"></div>
       <div class="modal-actions"><button class="btn ghost" id="whoSkip">Skip for now</button></div>
     </div>`;
   document.body.appendChild(wrap);
   const chips = wrap.querySelector('#whoChips');
-  chips.innerHTML = state.members.map(m=>`<div class="chip" data-id="${m.id}" style="border-color:${m.color}">${escapeHtml(m.name)}</div>`).join('');
-  chips.querySelectorAll('.chip').forEach(c=>{
-    c.onclick = ()=>{
-      currentUserId = c.dataset.id;
-      try{ localStorage.setItem('house-board-who-am-i', currentUserId); }catch(e){}
-      document.body.removeChild(wrap); renderMembersRow(); render();
-    };
-  });
-  wrap.querySelector('#whoSkip').onclick = ()=> document.body.removeChild(wrap);
+
+  function renderChips(){
+    chips.innerHTML = state.members.map(m=>`
+      <div class="chip who-chip" style="border-color:${m.color}">
+        <span class="who-chip-avatar" data-avatar-id="${m.id}" title="Add/change photo">${avatarHtml(m,'sm')}</span>
+        <span class="who-chip-name" data-id="${m.id}">${escapeHtml(m.name)}</span>
+      </div>
+    `).join('');
+    chips.querySelectorAll('.who-chip-name').forEach(nameEl=>{
+      nameEl.onclick = ()=>{
+        currentUserId = nameEl.dataset.id;
+        try{ localStorage.setItem('house-board-who-am-i', currentUserId); }catch(e){}
+        activeWhoAreYouRefresh = null;
+        document.body.removeChild(wrap); renderMembersRow(); render();
+      };
+    });
+    chips.querySelectorAll('.who-chip-avatar').forEach(avEl=>{
+      avEl.onclick = (e)=>{
+        e.stopPropagation();
+        pendingAvatarMemberId = avEl.dataset.avatarId;
+        document.getElementById('avatarFileInput').click();
+      };
+    });
+  }
+  renderChips();
+  activeWhoAreYouRefresh = renderChips;
+
+  wrap.querySelector('#whoSkip').onclick = ()=> { activeWhoAreYouRefresh = null; document.body.removeChild(wrap); };
 }
 
 /* ---------- RENDER ROUTER ---------- */
@@ -1539,10 +1591,15 @@ function renderCalendar(){
     .sort((a,b)=>a._days-b._days);
   return `
     <div class="card">
-      <h3>Connect your calendar</h3>
-      <p style="font-size:13px;color:var(--ink-soft);margin:-4px 0 10px;">Each housemate can pull their own Google Calendar events into this board with their own Google sign-in. This is a manual sync, not live — tap it again anytime to pick up new changes.</p>
-      <button class="btn" data-action="sync-google-calendar">Sync Google Calendar</button>
-      <div id="googleSyncStatus" style="font-size:12.5px;color:var(--ink-soft);margin-top:8px;"></div>
+      <div data-action="toggle-google-card" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+        <h3 style="margin:0;">Connect your calendar</h3>
+        <span style="font-size:13px;color:var(--ink-soft);">${googleCardCollapsed?'Show ▾':'Hide ▴'}</span>
+      </div>
+      ${googleCardCollapsed ? '' : `
+        <p style="font-size:13px;color:var(--ink-soft);margin:10px 0 10px;">Each housemate can pull their own Google Calendar events into this board with their own Google sign-in. This is a manual sync, not live — tap it again anytime to pick up new changes.</p>
+        <button class="btn" data-action="sync-google-calendar">Sync Google Calendar</button>
+        <div id="googleSyncStatus" style="font-size:12.5px;color:var(--ink-soft);margin-top:8px;"></div>
+      `}
     </div>
     <div class="card">${renderMonthCalendar()}</div>
     <div class="card">
@@ -1906,6 +1963,13 @@ function attachHandlers(){
     }
     state.events.push({id:uid(), title, date, type:c.querySelector('#eventType').value, visibility, visibleTo, createdBy:currentUserId});
     saveState(); render();
+  };
+
+  const toggleGoogleCard = c.querySelector('[data-action="toggle-google-card"]');
+  if(toggleGoogleCard) toggleGoogleCard.onclick = ()=>{
+    googleCardCollapsed = !googleCardCollapsed;
+    try{ localStorage.setItem('house-board-google-collapsed', String(googleCardCollapsed)); }catch(e){}
+    render();
   };
 
   const syncGoogleBtn = c.querySelector('[data-action="sync-google-calendar"]');
