@@ -168,6 +168,14 @@ button.btn.ghost:active{background:var(--board-bg2);}
 button.icon-btn{ background:none;border:none;cursor:pointer;color:var(--ink-soft);font-size:16px;padding:7px 9px;border-radius:8px;min-width:34px;min-height:34px;display:inline-flex;align-items:center;justify-content:center; }
 button.icon-btn:hover{background:var(--board-bg2);color:var(--ink);}
 button.icon-btn:active{background:var(--board-bg2);color:var(--ink);}
+.action-sheet{display:flex;flex-direction:column;gap:2px;margin-top:4px;}
+.action-sheet-btn{
+  display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+  background:none;border:none;border-radius:10px;padding:13px 10px;
+  font-size:14.5px;font-family:'Inter',sans-serif;color:var(--ink);cursor:pointer;
+}
+.action-sheet-btn:hover, .action-sheet-btn:active{background:var(--board-bg2);}
+.action-sheet-btn .icon{font-size:17px;width:22px;text-align:center;flex:none;}
 
 input,select,textarea{ font-family:'Inter',sans-serif;font-size:16px; border:1px solid var(--line);border-radius:8px;padding:10px 11px; background:#fff;color:var(--ink); width:100%; }
 input:focus,select:focus,textarea:focus{outline:2px solid var(--blue);outline-offset:0;}
@@ -1179,6 +1187,10 @@ const BADGE_DEFS = [
   { key:'bill2', cat:'Bills', icon:'💵', name:'Bill Slayer', desc:'Logged 10 shared expenses', test:s=>s.expenses>=10 },
   { key:'bill3', cat:'Bills', icon:'💰', name:'Money Manager', desc:'Logged 25 shared expenses', test:s=>s.expenses>=25 },
   { key:'bill4', cat:'Bills', icon:'🏦', name:'Treasurer', desc:'Logged 50 shared expenses', test:s=>s.expenses>=50 },
+  { key:'sugar1', cat:'Bills', icon:'🍬', name:'Generous Roommate', desc:'Paid $100+ total for shared expenses', test:s=>s.totalPaid>=100 },
+  { key:'sugar2', cat:'Bills', icon:'🍭', name:'Sugar Daddy', desc:'Paid $500+ total for shared expenses', test:s=>s.totalPaid>=500 },
+  { key:'sugar3', cat:'Bills', icon:'💸', name:'Sugar Daddy Supreme', desc:'Paid $1,500+ total for shared expenses', test:s=>s.totalPaid>=1500 },
+  { key:'sugar4', cat:'Bills', icon:'🤑', name:'Bank of the House', desc:'Paid $3,000+ total for shared expenses', test:s=>s.totalPaid>=3000 },
   // Assigning tasks
   { key:'asn1', cat:'Organizing', icon:'👉', name:'Delegator', desc:'Assigned 5 tasks', test:s=>s.assigns>=5 },
   { key:'asn2', cat:'Organizing', icon:'📌', name:'Go-Getter', desc:'Assigned 10 tasks', test:s=>s.assigns>=10 },
@@ -1248,6 +1260,7 @@ function memberBadges(memberId){
     earlyBird: choreEntries.filter(e=> hourOf(e)<8).length,
     nightOwl: choreEntries.filter(e=> hourOf(e)>=22).length,
     weekend: choreEntries.filter(e=> [0,6].includes(dowOf(e))).length,
+    totalPaid: state.expenses.filter(ex=>ex.paidBy===memberId && !ex.removed).reduce((s,ex)=>s+ex.amount,0),
   };
   return BADGE_DEFS.map(b=> ({ ...b, earned: b.test(stats) }));
 }
@@ -1480,6 +1493,35 @@ function isDueNow(ch){
   if(ch.type==='rotating'){ const st = rotationStatus(ch); if(st.needsSetup) return true; return st.periodStart <= todayStr(); }
   return ch.dueDate && ch.dueDate <= todayStr();
 }
+function openChoreActionsSheet(ch){
+  const wrap = document.createElement('div');
+  wrap.className='overlay';
+  const isRotating = ch.type==='rotating';
+  const canSwap = ch.type==='rotating' || ch.type==='linked' || ch.type==='fixed';
+  wrap.innerHTML = `
+    <div class="modal" style="max-width:360px;">
+      <h3 style="margin-bottom:2px;">${escapeHtml(ch.title)}</h3>
+      <div class="action-sheet">
+        ${canSwap?`<button class="action-sheet-btn" data-act="swap"><span class="icon">⇄</span>Swap who's doing it</button>`:''}
+        ${isRotating?`<button class="action-sheet-btn" data-act="plan"><span class="icon">📋</span>${ch.draftRotation?'Edit planned rotation':'Plan a future rotation'}</button>`:''}
+        <button class="action-sheet-btn" data-act="edit"><span class="icon">✎</span>Edit chore</button>
+        <button class="action-sheet-btn" data-act="delete" style="color:var(--danger);"><span class="icon">✕</span>Delete chore</button>
+      </div>
+      <div class="modal-actions"><button class="btn ghost" id="closeSheet">Cancel</button></div>
+    </div>`;
+  document.body.appendChild(wrap);
+  const swapBtn = wrap.querySelector('[data-act="swap"]');
+  if(swapBtn) swapBtn.onclick = ()=>{ document.body.removeChild(wrap); openSwapModal(ch); };
+  const planBtn = wrap.querySelector('[data-act="plan"]');
+  if(planBtn) planBtn.onclick = ()=>{ document.body.removeChild(wrap); openDraftRotationModal(ch); };
+  wrap.querySelector('[data-act="edit"]').onclick = ()=>{ document.body.removeChild(wrap); openChoreModal(ch); };
+  wrap.querySelector('[data-act="delete"]').onclick = ()=>{
+    document.body.removeChild(wrap);
+    state.chores = state.chores.filter(x=>x.id!==ch.id);
+    saveState(); render();
+  };
+  wrap.querySelector('#closeSheet').onclick = ()=> document.body.removeChild(wrap);
+}
 function choreRow(ch){
   const done = isChoreDone(ch);
   const eff = effectiveDate(ch);
@@ -1493,8 +1535,7 @@ function choreRow(ch){
         <div class="avatar sm" style="background:#9AA0AC">?</div>
         <div class="row-main"><div class="row-title">${escapeHtml(ch.title)}</div><div class="row-sub">Part of the weekly rotation — open "Edit weekly rotation" to set it up</div></div>
         <span class="tag today">Set up</span>
-        <button class="icon-btn" data-action="edit-chore" data-id="${ch.id}">✎</button>
-        <button class="icon-btn" data-action="delete-chore" data-id="${ch.id}">✕</button>
+        <button class="icon-btn" data-action="chore-menu" data-id="${ch.id}" title="More actions">⋯</button>
       </div>`;
     }
     const roleIdx = plan.roles.findIndex(r=>r.choreId===ch.id);
@@ -1510,9 +1551,7 @@ function choreRow(ch){
         <div class="row-sub">${escapeHtml(names)} · this week · weekly rotation</div>
       </div>
       <span class="tag ${overdue?'overdue':(eff===todayStr()?'today':'')}">${fmtDate(eff)}</span>
-      <button class="icon-btn" data-action="swap-chore" data-id="${ch.id}" title="Swap">⇄</button>
-      <button class="icon-btn" data-action="edit-chore" data-id="${ch.id}">✎</button>
-      <button class="icon-btn" data-action="delete-chore" data-id="${ch.id}">✕</button>
+      <button class="icon-btn" data-action="chore-menu" data-id="${ch.id}" title="More actions">⋯</button>
     </div>`;
   }
   if(ch.type==='rotating'){
@@ -1527,10 +1566,7 @@ function choreRow(ch){
           <div class="row-sub">Rotates every ${ch.rotation.intervalWeeks===1?'week':ch.rotation.intervalWeeks+' wks'} · housemates not set yet</div>
         </div>
         <span class="tag today">Set up</span>
-        <button class="icon-btn" data-action="swap-chore" data-id="${ch.id}" title="Assign">⇄</button>
-        <button class="icon-btn" data-action="plan-rotation" data-id="${ch.id}" title="${ch.draftRotation?'Edit planned rotation':'Plan a future rotation'}">📋</button>
-        <button class="icon-btn" data-action="edit-chore" data-id="${ch.id}">✎</button>
-        <button class="icon-btn" data-action="delete-chore" data-id="${ch.id}">✕</button>
+        <button class="icon-btn" data-action="chore-menu" data-id="${ch.id}" title="More actions">⋯</button>
       </div>`;
     }
     const avatarsHtml = st.turnMembers.map(id=>avatarHtml(memberById(id),'sm')).join('');
@@ -1545,10 +1581,7 @@ function choreRow(ch){
         <div class="row-sub">${subtitle}</div>
       </div>
       <span class="tag ${overdue?'overdue':(eff===todayStr()?'today':'')}">${fmtDate(eff)}</span>
-      <button class="icon-btn" data-action="swap-chore" data-id="${ch.id}" title="Swap">⇄</button>
-      <button class="icon-btn" data-action="plan-rotation" data-id="${ch.id}" title="${ch.draftRotation?'Edit planned rotation':'Plan a future rotation'}">📋</button>
-      <button class="icon-btn" data-action="edit-chore" data-id="${ch.id}">✎</button>
-      <button class="icon-btn" data-action="delete-chore" data-id="${ch.id}">✕</button>
+      <button class="icon-btn" data-action="chore-menu" data-id="${ch.id}" title="More actions">⋯</button>
     </div>`;
   }
   const assignee = memberById(ch.assignee);
@@ -1561,9 +1594,7 @@ function choreRow(ch){
       <div class="row-sub">${assignee?escapeHtml(assignee.name):'Unassigned'} · ${ch.frequency}</div>
     </div>
     <span class="tag ${overdue?'overdue':(eff===todayStr()?'today':'')}">${fmtDate(eff)}</span>
-    <button class="icon-btn" data-action="swap-chore" data-id="${ch.id}" title="Swap">⇄</button>
-    <button class="icon-btn" data-action="edit-chore" data-id="${ch.id}">✎</button>
-    <button class="icon-btn" data-action="delete-chore" data-id="${ch.id}">✕</button>
+    <button class="icon-btn" data-action="chore-menu" data-id="${ch.id}" title="More actions">⋯</button>
   </div>`;
 }
 
@@ -1821,6 +1852,9 @@ function choreCadence(ch){
   }
   if(ch.type==='fixed'){
     return ch.frequency==='weekly' ? 'weekly' : 'other';
+  }
+  if(ch.type==='linked'){
+    return 'weekly'; // the "no-overlaps" weekly rotation system is inherently weekly
   }
   return 'other';
 }
@@ -2770,6 +2804,10 @@ function attachHandlers(){
   c.querySelectorAll('[data-action="plan-rotation"]').forEach(el=> el.onclick = ()=>{
     const ch = state.chores.find(x=>x.id===el.dataset.id);
     if(ch) openDraftRotationModal(ch);
+  });
+  c.querySelectorAll('[data-action="chore-menu"]').forEach(el=> el.onclick = ()=>{
+    const ch = state.chores.find(x=>x.id===el.dataset.id);
+    if(ch) openChoreActionsSheet(ch);
   });
   const openWeeklyBtn = c.querySelector('[data-action="open-weekly-rotation"]');
   if(openWeeklyBtn) openWeeklyBtn.onclick = openWeeklyRotationModal;
