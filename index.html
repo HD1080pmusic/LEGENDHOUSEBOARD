@@ -545,6 +545,25 @@ async function init(){
     state.mergedFrontDoorTowel = true;
     await saveState();
   }
+  if(!state.mascotsAutoAssigned){
+    const MASCOT_NAME_MAP = {
+      'jimmy': 'Piccolo GIF.gif',
+      'christi': 'Cinamoroll GIF.gif',
+      'hd': 'totoro-jumping.gif',
+      'kaitlin': 'Kuromi GIF.gif',
+      'andy': 'Trunks GIF.gif',
+      'shayla': 'Hello Kitty GIF.gif',
+      'ryan': 'Zoro GIF.gif',
+    };
+    state.members.forEach(m=>{
+      const key = m.name.trim().toLowerCase();
+      if(MASCOT_NAME_MAP[key] && !m.mascotGif){
+        m.mascotGif = MASCOT_NAME_MAP[key];
+      }
+    });
+    state.mascotsAutoAssigned = true;
+    await saveState();
+  }
   try{
     const remembered = localStorage.getItem('house-board-who-am-i');
     if(remembered && state.members.some(m=>m.id===remembered)){ currentUserId = remembered; }
