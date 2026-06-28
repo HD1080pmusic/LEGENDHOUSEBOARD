@@ -17,7 +17,7 @@
 
 /* GIF Section Styling */
 .title-container { display: flex; flex-direction: column; gap: 8px; }
-.gif-container { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.gif-container { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; align-items: flex-start; }
 .gif-item { 
   width: 42px; 
   height: 42px; 
@@ -28,6 +28,12 @@
 }
 .gif-trunks { object-position: top; } /* Shifts Trunks upward so he isn't cropped */
 .gif-piccolo { object-position: top; } /* Piccolo's gif is tall, so keep his head/torso in frame */
+.mascot-slot{ display:flex; flex-direction:column; align-items:center; gap:2px; }
+.mascot-badge{
+  font-size:9px; font-family:'JetBrains Mono',monospace; font-weight:700;
+  background:var(--purple); color:#fff; width:16px; height:16px; line-height:16px;
+  text-align:center; border-radius:50%; cursor:default;
+}
 
 :root{
   --board-bg:#FBF6EC;
@@ -256,16 +262,7 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
   <div class="frame-title"><img src="data:image/png;base64,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" alt="" style="width:30px;height:30px;border-radius:8px;vertical-align:-7px;margin-right:8px;">Legend House Board</div>
   <div class="frame-date" id="todayDate"></div>
   </div>
-  <div class="gif-container">
-    <img src="totoro-jumping.gif" alt="Totoro" class="gif-item">
-    <img src="Naruto Kurama GIF.gif" alt="Kurama" class="gif-item">
-    <img src="Cinamoroll GIF.gif" alt="Cinamoroll" class="gif-item">
-    <img src="Kuromi GIF.gif" alt="Kuromi" class="gif-item">
-    <img src="Zoro GIF.gif" alt="Zoro" class="gif-item">
-    <img src="Trunks GIF.gif" alt="Trunks" class="gif-item gif-trunks">
-    <img src="Hello Kitty GIF.gif" alt="Hello Kitty" class="gif-item">
-    <img src="Piccolo GIF.gif" alt="Piccolo" class="gif-item gif-piccolo">
-  </div>
+  <div class="gif-container" id="gifContainer"></div>
 </div>
     </div>
     <div class="members-row" id="membersRow"></div>
@@ -623,6 +620,29 @@ async function init(){
 }
 
 /* ---------- MEMBERS ---------- */
+const MASCOT_GIFS = [
+  { file:'totoro-jumping.gif', alt:'Totoro' },
+  { file:'Naruto Kurama GIF.gif', alt:'Kurama' },
+  { file:'Cinamoroll GIF.gif', alt:'Cinamoroll' },
+  { file:'Kuromi GIF.gif', alt:'Kuromi' },
+  { file:'Zoro GIF.gif', alt:'Zoro' },
+  { file:'Trunks GIF.gif', alt:'Trunks', cls:'gif-trunks' },
+  { file:'Hello Kitty GIF.gif', alt:'Hello Kitty' },
+  { file:'Piccolo GIF.gif', alt:'Piccolo', cls:'gif-piccolo' },
+];
+function renderMascotRow(){
+  const el = document.getElementById('gifContainer');
+  if(!el) return;
+  el.innerHTML = MASCOT_GIFS.map(g=>{
+    const owner = state.members.find(m=>m.mascotGif===g.file);
+    const lvl = owner ? levelInfo(memberXP(owner.id).total).level : null;
+    const badge = owner ? `<div class="mascot-badge" title="${escapeHtml(owner.name)} — Level ${lvl}">${lvl}</div>` : '';
+    return `<div class="mascot-slot">
+      <img src="${g.file}" alt="${g.alt}" class="gif-item ${g.cls||''}">
+      ${badge}
+    </div>`;
+  }).join('');
+}
 function renderMembersRow(){
   const row = document.getElementById('membersRow');
   const notifs = getNotifications();
@@ -632,6 +652,7 @@ function renderMembersRow(){
   document.getElementById('addMemberBtn').onclick = ()=>openMemberModal(false);
   document.getElementById('whoPill').onclick = openWhoAreYou;
   document.getElementById('notifBell').onclick = openNotificationsModal;
+  renderMascotRow();
 }
 
 /* ---------- IN-APP NOTIFICATIONS ----------
@@ -783,11 +804,34 @@ function openMemberModal(isFirst){
       return;
     }
     currentList.innerHTML = state.members.map(m=>`
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);">
-        <span style="display:flex;align-items:center;gap:8px;font-size:13.5px;">${avatarHtml(m,'sm')}${escapeHtml(m.name)}</span>
-        <button class="icon-btn" data-delete-id="${m.id}" title="Remove ${escapeHtml(m.name)}" style="color:var(--danger);">Remove</button>
+      <div style="padding:8px 0;border-bottom:1px solid var(--line);">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span style="display:flex;align-items:center;gap:8px;font-size:13.5px;">${avatarHtml(m,'sm')}${escapeHtml(m.name)}</span>
+          <button class="icon-btn" data-delete-id="${m.id}" title="Remove ${escapeHtml(m.name)}" style="color:var(--danger);">Remove</button>
+        </div>
+        <div style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Mascot in the header (tap to choose, tap again to remove)</div>
+        <div style="display:flex;gap:5px;margin-top:4px;flex-wrap:wrap;">
+          ${MASCOT_GIFS.map(g=>`
+            <img src="${g.file}" alt="${g.alt}" data-mascot-pick="${m.id}" data-mascot-file="${g.file}"
+              style="width:26px;height:26px;border-radius:5px;object-fit:cover;cursor:pointer;${g.cls?'object-position:top;':''}border:2px solid ${m.mascotGif===g.file?'var(--purple)':'transparent'};">
+          `).join('')}
+        </div>
       </div>
     `).join('');
+    currentList.querySelectorAll('[data-mascot-pick]').forEach(img=>{
+      img.onclick = ()=>{
+        const mid = img.dataset.mascotPick;
+        const file = img.dataset.mascotFile;
+        const m = memberById(mid);
+        if(!m) return;
+        if(m.mascotGif === file){ m.mascotGif = null; }
+        else {
+          state.members.forEach(x=>{ if(x.mascotGif===file) x.mascotGif=null; }); // only one owner per mascot
+          m.mascotGif = file;
+        }
+        saveState(); renderMascotRow(); renderCurrentList();
+      };
+    });
     currentList.querySelectorAll('[data-delete-id]').forEach(btn=>{
       btn.onclick = ()=>{
         const id = btn.dataset.deleteId;
@@ -812,7 +856,7 @@ function openMemberModal(isFirst){
     const name = nameInput.value.trim();
     if(!name) return;
     const color = MARKER_COLORS[state.members.length % MARKER_COLORS.length];
-    state.members.push({id:uid(), name, color, avatarData:null});
+    state.members.push({id:uid(), name, color, avatarData:null, mascotGif:null});
     saveState(); renderMembersRow();
     nameInput.value='';
     renderCurrentList();
@@ -833,6 +877,49 @@ function openMemberModal(isFirst){
   }
 }
 
+function openAchievementsModal(){
+  const wrap = document.createElement('div');
+  wrap.className='overlay';
+  let viewingId = currentUserId || (state.members[0] && state.members[0].id);
+  wrap.innerHTML = `
+    <div class="modal">
+      <h3>Achievements</h3>
+      <div class="form-grid" style="margin-bottom:4px;">
+        <div><label>Viewing progress for</label>
+          <select id="achMemberSelect">${state.members.map(m=>`<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('')}</select>
+        </div>
+      </div>
+      <div id="achList"></div>
+      <div class="modal-actions"><button class="btn" id="achClose">Close</button></div>
+    </div>`;
+  document.body.appendChild(wrap);
+  const sel = wrap.querySelector('#achMemberSelect');
+  if(viewingId) sel.value = viewingId;
+  const listEl = wrap.querySelector('#achList');
+  function renderList(){
+    const mid = sel.value;
+    const badges = mid ? memberBadges(mid) : BADGE_DEFS.map(b=>({...b, earned:false}));
+    const earnedCount = badges.filter(b=>b.earned).length;
+    const cats = [...new Set(BADGE_DEFS.map(b=>b.cat))];
+    listEl.innerHTML = `<div style="font-size:12.5px;color:var(--ink-soft);margin:4px 0 10px;">${earnedCount} of ${badges.length} earned</div>` +
+      cats.map(cat=>`
+        <div class="section-label" style="margin-top:10px;">${cat}</div>
+        ${badges.filter(b=>b.cat===cat).map(b=>`
+          <div class="row" style="opacity:${b.earned?'1':'0.45'};">
+            <span style="font-size:20px;filter:${b.earned?'none':'grayscale(1)'};">${b.icon}</span>
+            <div class="row-main">
+              <div class="row-title" style="font-size:13.5px;">${escapeHtml(b.name)}</div>
+              <div class="row-sub">${escapeHtml(b.desc)}</div>
+            </div>
+            ${b.earned?`<span style="color:var(--green);font-size:13px;">✓</span>`:''}
+          </div>
+        `).join('')}
+      `).join('');
+  }
+  renderList();
+  sel.addEventListener('change', renderList);
+  wrap.querySelector('#achClose').onclick = ()=> document.body.removeChild(wrap);
+}
 function openXPKeyModal(){
   const wrap = document.createElement('div');
   wrap.className='overlay';
@@ -1009,6 +1096,140 @@ function isoWeekRange(weekKey){
   const sunday = new Date(monday); sunday.setUTCDate(monday.getUTCDate()+6);
   return { monday, sunday };
 }
+function weekIndex(weekKey){
+  return Math.floor(isoWeekRange(weekKey).monday.getTime() / (7*86400000));
+}
+function bestStreakEver(memberId){
+  const entries = state.weeklyScorecard.filter(s=>s.memberId===memberId)
+    .map(s=>({ idx: weekIndex(s.weekKey), perfect: s.perfect }))
+    .sort((a,b)=> a.idx-b.idx);
+  let best=0, cur=0, prevIdx=null;
+  entries.forEach(e=>{
+    if(e.perfect){
+      cur = (prevIdx!==null && e.idx===prevIdx+1) ? cur+1 : 1;
+      best = Math.max(best, cur);
+    } else {
+      cur = 0;
+    }
+    prevIdx = e.idx;
+  });
+  return best;
+}
+const STREAK_TIERS = [
+  { weeks:6, mult:2.0,  name:'Gold'   },
+  { weeks:3, mult:1.5, name:'Silver' },
+  { weeks:1, mult:1.2,  name:'Bronze' },
+];
+const BADGE_DEFS = [
+  // Chores
+  { key:'chore1', cat:'Chores', icon:'🧹', name:'Helper', desc:'Completed 10 chores', test:s=>s.chores>=10 },
+  { key:'chore2', cat:'Chores', icon:'🤖', name:'Chore Machine', desc:'Completed 50 chores', test:s=>s.chores>=50 },
+  { key:'chore3', cat:'Chores', icon:'⚙️', name:'Cleaning Machine', desc:'Completed 150 chores', test:s=>s.chores>=150 },
+  { key:'chore4', cat:'Chores', icon:'🏆', name:'Chore Legend', desc:'Completed 300 chores', test:s=>s.chores>=300 },
+  // Grocery shopping
+  { key:'groc1', cat:'Grocery', icon:'🛍️', name:'Shopper', desc:'Checked off 10 grocery items', test:s=>s.groceryBuys>=10 },
+  { key:'groc2', cat:'Grocery', icon:'🛒', name:'Grocery Guru', desc:'Checked off 25 grocery items', test:s=>s.groceryBuys>=25 },
+  { key:'groc3', cat:'Grocery', icon:'🏪', name:'Aisle Master', desc:'Checked off 75 grocery items', test:s=>s.groceryBuys>=75 },
+  { key:'groc4', cat:'Grocery', icon:'🏁', name:'Supermarket Sweep', desc:'Checked off 150 grocery items', test:s=>s.groceryBuys>=150 },
+  // Grocery list-keeping
+  { key:'glist1', cat:'Grocery', icon:'📝', name:'List Maker', desc:'Added 10 items to the grocery list', test:s=>s.groceryAdds>=10 },
+  { key:'glist2', cat:'Grocery', icon:'📋', name:'List Lord', desc:'Added 30 items to the grocery list', test:s=>s.groceryAdds>=30 },
+  { key:'glist3', cat:'Grocery', icon:'🥛', name:'Never Out Of Milk', desc:'Added 75 items to the grocery list', test:s=>s.groceryAdds>=75 },
+  // Bills
+  { key:'bill1', cat:'Bills', icon:'💳', name:'Bill Tracker', desc:'Logged 5 shared expenses', test:s=>s.expenses>=5 },
+  { key:'bill2', cat:'Bills', icon:'💵', name:'Bill Slayer', desc:'Logged 10 shared expenses', test:s=>s.expenses>=10 },
+  { key:'bill3', cat:'Bills', icon:'💰', name:'Money Manager', desc:'Logged 25 shared expenses', test:s=>s.expenses>=25 },
+  { key:'bill4', cat:'Bills', icon:'🏦', name:'Treasurer', desc:'Logged 50 shared expenses', test:s=>s.expenses>=50 },
+  // Assigning tasks
+  { key:'asn1', cat:'Organizing', icon:'👉', name:'Delegator', desc:'Assigned 5 tasks', test:s=>s.assigns>=5 },
+  { key:'asn2', cat:'Organizing', icon:'📌', name:'Go-Getter', desc:'Assigned 10 tasks', test:s=>s.assigns>=10 },
+  { key:'asn3', cat:'Organizing', icon:'👷', name:'Foreman', desc:'Assigned 25 tasks', test:s=>s.assigns>=25 },
+  { key:'asn4', cat:'Organizing', icon:'🎯', name:'Master Delegator', desc:'Assigned 50 tasks', test:s=>s.assigns>=50 },
+  // Reminders posted
+  { key:'rpost1', cat:'Reminders', icon:'🗒️', name:'Note Passer', desc:'Posted 5 reminders', test:s=>s.reminderPosts>=5 },
+  { key:'rpost2', cat:'Reminders', icon:'📣', name:'Town Crier', desc:'Posted 15 reminders', test:s=>s.reminderPosts>=15 },
+  { key:'rpost3', cat:'Reminders', icon:'🧠', name:'Memory Keeper', desc:'Posted 30 reminders', test:s=>s.reminderPosts>=30 },
+  // Reminders followed through
+  { key:'rdone1', cat:'Reminders', icon:'✅', name:'Dependable', desc:'Followed through on 5 reminders', test:s=>s.reminders>=5 },
+  { key:'rdone2', cat:'Reminders', icon:'⏰', name:'Reminder Hero', desc:'Followed through on 10 reminders', test:s=>s.reminders>=10 },
+  { key:'rdone3', cat:'Reminders', icon:'🔔', name:'Never Forgets', desc:'Followed through on 25 reminders', test:s=>s.reminders>=25 },
+  // Calendar
+  { key:'evt1', cat:'Calendar', icon:'🗓️', name:'Planner', desc:'Added 5 events to the calendar', test:s=>s.eventAdds>=5 },
+  { key:'evt2', cat:'Calendar', icon:'📅', name:'Social Secretary', desc:'Added 15 events to the calendar', test:s=>s.eventAdds>=15 },
+  { key:'evt3', cat:'Calendar', icon:'🎉', name:'Event Mastermind', desc:'Added 30 events to the calendar', test:s=>s.eventAdds>=30 },
+  // House rules
+  { key:'rule1', cat:'House Rules', icon:'📜', name:'Lawmaker', desc:'Added a house rule', test:s=>s.ruleAdds>=1 },
+  { key:'rule2', cat:'House Rules', icon:'⚖️', name:'Rule Setter', desc:'Added 5 house rules', test:s=>s.ruleAdds>=5 },
+  { key:'rule3', cat:'House Rules', icon:'🏛️', name:'House Constitution', desc:'Added 10 house rules', test:s=>s.ruleAdds>=10 },
+  // Streaks
+  { key:'streak1', cat:'Streaks', icon:'🥉', name:'Bronze Streaker', desc:'Hit a 1-week perfect streak', test:s=>s.bestStreak>=1 },
+  { key:'streak2', cat:'Streaks', icon:'🥈', name:'Silver Streaker', desc:'Hit a 3-week perfect streak', test:s=>s.bestStreak>=3 },
+  { key:'streak3', cat:'Streaks', icon:'🥇', name:'Gold Streaker', desc:`Hit a ${STREAK_TIERS[0].weeks}-week perfect streak`, test:s=>s.bestStreak>=STREAK_TIERS[0].weeks },
+  { key:'streak4', cat:'Streaks', icon:'💎', name:'Platinum Streaker', desc:'Hit a 10-week perfect streak', test:s=>s.bestStreak>=10 },
+  { key:'streak5', cat:'Streaks', icon:'🔥', name:'Unstoppable', desc:'Hit a 15-week perfect streak', test:s=>s.bestStreak>=15 },
+  // Levels
+  { key:'lvl1', cat:'Levels', icon:'🌱', name:'Getting Started', desc:'Reached Level 3', test:s=>s.level>=3 },
+  { key:'lvl2', cat:'Levels', icon:'🌟', name:'Levelled Up', desc:'Reached Level 5', test:s=>s.level>=5 },
+  { key:'lvl3', cat:'Levels', icon:'🔟', name:'Double Digits', desc:'Reached Level 10', test:s=>s.level>=10 },
+  { key:'lvl4', cat:'Levels', icon:'🎲', name:'High Roller', desc:'Reached Level 15', test:s=>s.level>=15 },
+  { key:'lvl5', cat:'Levels', icon:'🚀', name:'Max Effort', desc:'Reached Level 20', test:s=>s.level>=20 },
+  // Lifetime XP
+  { key:'xp1', cat:'XP Milestones', icon:'💯', name:'First Hundred', desc:'Earned 100 lifetime XP', test:s=>s.totalXP>=100 },
+  { key:'xp2', cat:'XP Milestones', icon:'📈', name:'Half a Grand', desc:'Earned 500 lifetime XP', test:s=>s.totalXP>=500 },
+  { key:'xp3', cat:'XP Milestones', icon:'📊', name:'XP Collector', desc:'Earned 1,000 lifetime XP', test:s=>s.totalXP>=1000 },
+  { key:'xp4', cat:'XP Milestones', icon:'🗃️', name:'XP Hoarder', desc:'Earned 2,500 lifetime XP', test:s=>s.totalXP>=2500 },
+  { key:'xp5', cat:'XP Milestones', icon:'👑', name:'XP Tycoon', desc:'Earned 5,000 lifetime XP', test:s=>s.totalXP>=5000 },
+  // Special
+  { key:'sp1', cat:'Special', icon:'🎭', name:'Jack of All Trades', desc:'Earned XP from 5+ different kinds of activity', test:s=>s.distinctSources>=5 },
+  { key:'sp2', cat:'Special', icon:'🎨', name:'Renaissance Roommate', desc:'Earned XP from every kind of activity on the board', test:s=>s.distinctSources>=9 },
+  { key:'sp3', cat:'Special', icon:'🌅', name:'Early Bird', desc:'Completed 5 chores before 8am', test:s=>s.earlyBird>=5 },
+  { key:'sp4', cat:'Special', icon:'🦉', name:'Night Owl', desc:'Completed 5 chores after 10pm', test:s=>s.nightOwl>=5 },
+  { key:'sp5', cat:'Special', icon:'🏋️', name:'Weekend Warrior', desc:'Completed 10 chores on a weekend', test:s=>s.weekend>=10 },
+];
+function memberBadges(memberId){
+  const entries = state.xpLog.filter(e=>e.memberId===memberId);
+  const bySource = src => entries.filter(e=>e.source===src);
+  const hourOf = e => new Date(e.at).getHours();
+  const dowOf = e => new Date(e.at).getDay(); // 0=Sun..6=Sat
+  const choreEntries = bySource('chore');
+  const stats = {
+    chores: choreEntries.length,
+    groceryBuys: bySource('grocery_buy').length,
+    groceryAdds: bySource('grocery_add').length,
+    expenses: bySource('expense_add').length,
+    assigns: bySource('assign').length,
+    reminderPosts: bySource('reminder_post').length,
+    reminders: bySource('reminder_done').length,
+    eventAdds: bySource('event_add').length,
+    ruleAdds: bySource('rule_add').length,
+    bestStreak: bestStreakEver(memberId),
+    level: levelInfo(memberXP(memberId).total).level,
+    totalXP: memberXP(memberId).total,
+    distinctSources: new Set(entries.map(e=>e.source)).size,
+    earlyBird: choreEntries.filter(e=> hourOf(e)<8).length,
+    nightOwl: choreEntries.filter(e=> hourOf(e)>=22).length,
+    weekend: choreEntries.filter(e=> [0,6].includes(dowOf(e))).length,
+  };
+  return BADGE_DEFS.map(b=> ({ ...b, earned: b.test(stats) }));
+}
+function streakRiskInfo(memberId){
+  const dow = (new Date().getDay()+6)%7; // Mon=0..Sun=6
+  if(dow < 4) return null; // only worth nudging from Friday onward
+  const wk = isoWeekKey(new Date());
+  const due = choresDueInWeek(wk).filter(x=>x.assigneeIds.includes(memberId));
+  if(due.length===0) return null;
+  const notDone = due.filter(x=> !state.xpLog.some(e=>e.memberId===memberId && e.source==='chore' && e.weekKey===wk && e.meta && e.meta.choreId===x.chore.id));
+  if(notDone.length===0) return null;
+  return { notDone, daysLeft: 6-dow };
+}
+function recapData(days){
+  const since = Date.now() - days*86400000;
+  return state.members.map(m=>{
+    const entries = state.xpLog.filter(e=>e.memberId===m.id && e.at>=since);
+    return { member:m, xp: entries.reduce((s,e)=>s+e.xp,0), count: entries.length };
+  }).sort((a,b)=> b.xp-a.xp);
+}
+let recapPeriod = 'week';
 function choresDueInWeek(weekKey){
   const { monday, sunday } = isoWeekRange(weekKey);
   const due = [];
@@ -1066,11 +1287,6 @@ function strictStreak(memberId){
   }
   return streak;
 }
-const STREAK_TIERS = [
-  { weeks:8, mult:1.5,  name:'Gold'   },
-  { weeks:4, mult:1.25, name:'Silver' },
-  { weeks:2, mult:1.1,  name:'Bronze' },
-];
 function streakTierFor(weeks){
   return STREAK_TIERS.find(t=> weeks>=t.weeks) || null;
 }
@@ -1116,6 +1332,13 @@ function choreXPValue(ch){
   return XP.choreOneTime;
 }
 const XP_PER_LEVEL = 100;
+const LEVEL_TITLES = [
+  'New Roommate', 'Roommate', 'Reliable Roommate', 'House Helper', 'House Hero',
+  'Household MVP', 'Chore Champion', 'House Legend',
+];
+function titleForLevel(level){
+  return LEVEL_TITLES[Math.min(level-1, LEVEL_TITLES.length-1)];
+}
 function memberXP(memberId){
   const entries = state.xpLog.filter(e=>e.memberId===memberId);
   const choreCount = entries.filter(e=>e.source==='chore').length;
@@ -1128,7 +1351,7 @@ function memberXP(memberId){
 function levelInfo(xp){
   const level = 1 + Math.floor(xp/XP_PER_LEVEL);
   const into = xp % XP_PER_LEVEL;
-  return { level, into, next:XP_PER_LEVEL };
+  return { level, into, next:XP_PER_LEVEL, title:titleForLevel(level) };
 }
 function leaderboardData(){
   return state.members.map(m=>{
@@ -1406,14 +1629,16 @@ function renderDashboard(){
   const myReminders = state.reminders.filter(r=> !r.done && (r.to===currentUserId || r.to==='everyone'));
   const balances = computeBalances();
   const myBalance = currentUserId ? (balances[currentUserId]||0) : null;
-
-  const board = leaderboardData();
+  const risk = currentUserId ? streakRiskInfo(currentUserId) : null;
+  const periodDays = recapPeriod==='week' ? 7 : 30;
+  const recap = recapData(periodDays);
   const medals = ['🥇','🥈','🥉'];
 
   return `
     <div class="card">
       <h3>Today at a glance</h3>
       <button class="btn ghost" data-action="open-quick-task" style="margin:-4px 0 12px;">📌 Assign a task</button>
+      ${risk ? `<div class="empty" style="background:#FFF1DF;border-radius:10px;padding:10px 12px;margin-bottom:10px;">⚠️ <b>Streak at risk!</b> ${risk.notDone.length} thing${risk.notDone.length===1?'':'s'} still due this week (${risk.notDone.map(x=>escapeHtml(x.chore.title)).join(', ')}) — ${risk.daysLeft<=0?'today is the last day':`${risk.daysLeft} day${risk.daysLeft===1?'':'s'} left`} to keep your multiplier.</div>`:''}
       ${dueChores.length===0 && upcomingEvents.length===0 && myReminders.length===0 ? `<div class="empty">Nothing urgent — nice and quiet on the board.</div>` : ''}
       ${dueChores.length>0 ? `<div class="section-label" style="margin-top:4px;">Chores needing attention</div>${dueChores.slice(0,6).map(choreRow).join('')}`:''}
       ${myReminders.length>0 ? `<div class="section-label">Reminders for you</div>${myReminders.slice(0,4).map(reminderNote).join('')}`:''}
@@ -1421,21 +1646,49 @@ function renderDashboard(){
     </div>
     ${state.members.length>0 ? `
     <div class="card">
-      <h3>🏆 Chore leaderboard</h3>
-      <p style="font-size:12px;color:var(--ink-soft);margin-top:-6px;">XP varies by effort — rare chores are worth more than daily ones. A perfect week (everything due, done) builds a streak that multiplies ALL your XP. <button class="icon-btn" data-action="open-xp-key" style="font-size:11px;text-decoration:underline;padding:0;min-width:0;min-height:0;color:var(--blue);">See the full XP key</button></p>
-      ${board.every(b=>b.total===0) ? `<div class="empty">Nobody's earned XP yet — first one on the board gets the crown.</div>` : board.map((b,i)=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <h3 style="margin:0;">📅 ${recapPeriod==='week'?'This week':'This month'}'s recap</h3>
+        <div class="chip-select" style="margin:0;">
+          <span class="chip ${recapPeriod==='week'?'active':''}" data-action="recap-period" data-period="week" style="${recapPeriod==='week'?'background:var(--blue);':''}">Week</span>
+          <span class="chip ${recapPeriod==='month'?'active':''}" data-action="recap-period" data-period="month" style="${recapPeriod==='month'?'background:var(--blue);':''}">Month</span>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--ink-soft);margin:6px 0 10px;">Levels live under each housemate's mascot up top. XP varies by effort — rare chores are worth more than daily ones, and a perfect week builds a streak that multiplies ALL your XP. <button class="icon-btn" data-action="open-xp-key" style="font-size:11px;text-decoration:underline;padding:0;min-width:0;min-height:0;color:var(--blue);">See the full XP key</button></p>
+      ${recap.every(r=>r.xp===0) ? `<div class="empty">Nobody's earned XP ${recapPeriod==='week'?'this week':'this month'} yet.</div>` : recap.map((r,i)=>{
+        const lvl = levelInfo(memberXP(r.member.id).total);
+        const tier = streakTierFor(strictStreak(r.member.id));
+        return `
         <div class="row" style="align-items:flex-start;">
-          <span style="font-size:18px;width:26px;text-align:center;margin-top:2px;">${medals[i]||''}</span>
-          <span style="display:flex;align-items:center;margin-top:2px;">${avatarHtml(b.member,'sm')}</span>
+          <span style="font-size:18px;width:26px;text-align:center;margin-top:2px;">${r.xp>0?(medals[i]||''):''}</span>
+          <span style="display:flex;align-items:center;margin-top:2px;">${avatarHtml(r.member,'sm')}</span>
           <div class="row-main">
             <div class="row-title" style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
-              ${escapeHtml(b.member.name)} <span class="level-badge">Lv ${b.level.level}</span>
+              ${escapeHtml(r.member.name)} <span class="level-badge">Lv ${lvl.level} · ${lvl.title}</span>
             </div>
-            <div class="row-sub">${b.choreCount} chore${b.choreCount===1?'':'s'} · ${b.assignCount} task${b.assignCount===1?'':'s'} assigned${b.tier?` · 🔥 ${b.tier.name} streak (×${b.tier.mult})`:b.streak>=1?` · ${b.streak}-wk perfect streak`:''} · <b>${b.total} XP</b></div>${b.tier?`<div style="font-size:11px;color:var(--purple);font-weight:600;margin-top:1px;">Every new task earns ×${b.tier.mult} XP right now!</div>`:''}
-            <div class="xp-bar-track"><div class="xp-bar-fill" style="width:${b.level.into}%;"></div></div>
+            <div class="row-sub">${r.count} XP event${r.count===1?'':'s'}${tier?` · 🔥 ${tier.name} streak (×${tier.mult})`:''} · <b>${r.xp} XP</b> ${recapPeriod==='week'?'this week':'this month'}</div>
           </div>
-        </div>
-      `).join('')}
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <h3 style="margin:0;">🏅 Achievements</h3>
+        <button class="icon-btn" data-action="open-achievements" style="font-size:12px;text-decoration:underline;color:var(--blue);">Browse all ${BADGE_DEFS.length}</button>
+      </div>
+      ${state.members.map(m=>{
+        const badges = memberBadges(m.id);
+        const earned = badges.filter(b=>b.earned);
+        return `
+        <div class="row" style="align-items:flex-start;">
+          <span style="display:flex;align-items:center;margin-top:2px;">${avatarHtml(m,'sm')}</span>
+          <div class="row-main">
+            <div class="row-title">${escapeHtml(m.name)} <span style="font-weight:400;color:var(--ink-soft);font-size:12.5px;">(${earned.length}/${badges.length})</span></div>
+            ${earned.length===0
+              ? `<div class="row-sub" style="margin-top:3px;">No badges yet — keep going!</div>`
+              : `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">${earned.map(b=>`<span title="${escapeHtml(b.name)} — ${escapeHtml(b.desc)}" style="font-size:18px;">${b.icon}</span>`).join('')}</div>`}
+          </div>
+        </div>`;
+      }).join('')}
     </div>`:''}
     ${currentUserId ? `
     <div class="card">
@@ -2305,6 +2558,12 @@ function attachHandlers(){
   if(openQuickTaskBtn) openQuickTaskBtn.onclick = ()=>openQuickTaskModal();
   const openXPKeyBtn = c.querySelector('[data-action="open-xp-key"]');
   if(openXPKeyBtn) openXPKeyBtn.onclick = ()=>openXPKeyModal();
+  const openAchievementsBtn = c.querySelector('[data-action="open-achievements"]');
+  if(openAchievementsBtn) openAchievementsBtn.onclick = ()=>openAchievementsModal();
+  c.querySelectorAll('[data-action="recap-period"]').forEach(el=> el.onclick = ()=>{
+    recapPeriod = el.dataset.period;
+    render();
+  });
   c.querySelectorAll('[data-action="edit-chore"]').forEach(el=> el.onclick = ()=>{
     const ch = state.chores.find(x=>x.id===el.dataset.id);
     if(ch) openChoreModal(ch);
