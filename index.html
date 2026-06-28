@@ -254,6 +254,51 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
   .gif-container{ gap:3px; }
   .gif-item{ width:24px; height:24px; border-radius:4px; }
 }
+
+/* ---------- DASHBOARD CHALKBOARD THEME ----------
+   Scoped to .chalk-dashboard (applied to #content only while the Dashboard tab is
+   active) so every other tab keeps the regular paper/card look untouched.
+   Overriding the variables (not just specific classes) means inline styles inside
+   the dashboard's own templates — e.g. style="color:var(--ink-soft)" — pick up the
+   right chalk-appropriate colors automatically too. */
+.chalk-dashboard{
+  --ink: var(--chalk);
+  --ink-soft: #BFD2C7;
+  --line: rgba(255,255,255,.18);
+  --board-bg2: rgba(255,255,255,.12);
+  color: var(--ink);
+}
+.chalk-dashboard .card{
+  background:linear-gradient(160deg,var(--frame),var(--frame2));
+  border:4px solid var(--wood);
+  position:relative;
+  overflow:hidden;
+}
+.chalk-dashboard .card::after{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:
+    radial-gradient(circle at 90% 0%, rgba(255,255,255,.06), transparent 60%),
+    repeating-radial-gradient(circle at 0 0, rgba(255,255,255,.045) 0px, transparent 1.2px, transparent 3px);
+  background-size: auto, 5px 5px;
+}
+.chalk-dashboard .card h3{
+  font-family:'Kalam',cursive;
+  text-shadow: 0 0 1px rgba(245,242,230,.45), 0 0 6px rgba(245,242,230,.15);
+}
+.chalk-dashboard button.icon-btn:hover, .chalk-dashboard button.icon-btn:active{ color:#fff; }
+.chalk-dashboard button.btn.ghost{ background:transparent; color:var(--chalk); }
+.chalk-dashboard button.btn.ghost:hover, .chalk-dashboard button.btn.ghost:active{ background:rgba(255,255,255,.12); }
+.chalk-dashboard .tag{ background:rgba(255,255,255,.14); }
+.chalk-dashboard .tag.birthday{ background:rgba(224,80,139,.25); color:#FFB8D3; }
+.chalk-dashboard .tag.event{ background:rgba(46,120,201,.3); color:#AFD4F7; }
+.chalk-dashboard .tag.overdue{ background:rgba(214,69,69,.3); color:#FFB0AE; }
+.chalk-dashboard .tag.today{ background:rgba(242,150,46,.3); color:#FFD08F; }
+.chalk-dashboard .chip{ background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.3); }
+.chalk-dashboard .balance-amt{ color:var(--chalk); }
+.chalk-dashboard .balance-amt.pos{ color:#8FE2A8; }
+.chalk-dashboard .balance-amt.neg{ color:#FF9E9E; }
+.chalk-dashboard .xp-bar-track{ background:rgba(255,255,255,.18); }
+.chalk-dashboard .level-badge{ box-shadow:0 0 0 1px rgba(255,255,255,.25); }
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -278,8 +323,8 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
   </div>
 
   <div class="tabs" id="tabs">
-    <button class="tab" data-tab="calendar">📅 Calendar</button>
     <button class="tab" data-tab="dashboard">📊 Dashboard</button>
+    <button class="tab" data-tab="calendar">📅 Calendar</button>
     <button class="tab" data-tab="grocery">🛒 Grocery</button>
     <button class="tab" data-tab="chores">🧹 Chores</button>
     <button class="tab" data-tab="reminders">⏰ Reminders</button>
@@ -316,7 +361,7 @@ let pendingPhotoDate = null;
 let googleCardCollapsed = true;
 try{ const stored = localStorage.getItem('house-board-google-collapsed'); if(stored!==null) googleCardCollapsed = stored==='true'; }catch(e){}
 let currentUserId = null;
-let activeTab = 'calendar';
+let activeTab = 'dashboard';
 let viewYear = new Date().getFullYear();
 let viewMonth = new Date().getMonth();
 let selectedCalDate = null;
@@ -1087,6 +1132,7 @@ function openWhoAreYou(){
 function render(){
   document.querySelectorAll('.tab').forEach(t=> t.classList.toggle('active', t.dataset.tab===activeTab));
   const c = document.getElementById('content');
+  c.classList.toggle('chalk-dashboard', activeTab==='dashboard');
   if(activeTab==='dashboard') c.innerHTML = renderDashboard();
   else if(activeTab==='grocery') c.innerHTML = renderGrocery();
   else if(activeTab==='chores') c.innerHTML = renderChores();
@@ -1696,25 +1742,54 @@ function renderDashboard(){
   const dueChores = state.chores.filter(isDueNow).sort((a,b)=>effectiveDate(a).localeCompare(effectiveDate(b)));
   const upcomingEvents = visibleEvents()
     .map(e=>({...e, _days: daysUntil(e.date, e.type==='birthday')}))
-    .filter(e=> e._days>=0 && e._days<=14)
+    .filter(e=> e._days>=0 && e._days<=7)
     .sort((a,b)=>a._days-b._days);
   const myReminders = state.reminders.filter(r=> !r.done && (r.to===currentUserId || r.to==='everyone'));
-  const balances = computeBalances();
-  const myBalance = currentUserId ? (balances[currentUserId]||0) : null;
+  const bal = computeBalances();
+  const moves = settlementPlan(bal);
+  const unpaidTotal = Object.values(bal).filter(v=>v<-0.005).reduce((s,v)=>s+Math.abs(v),0);
   const risk = currentUserId ? streakRiskInfo(currentUserId) : null;
   const periodDays = recapPeriod==='week' ? 7 : 30;
   const recap = recapData(periodDays);
   const medals = ['🥇','🥈','🥉'];
+  const totalChores = state.chores.length;
+  const doneNowCount = state.chores.filter(c=>isChoreDone(c)).length;
 
   return `
     <div class="card">
       <h3>Today at a glance</h3>
       <button class="btn ghost" data-action="open-quick-task" style="margin:-4px 0 12px;">📌 Assign a task</button>
       ${risk ? `<div class="empty" style="background:#FFF1DF;border-radius:10px;padding:10px 12px;margin-bottom:10px;">⚠️ <b>Streak at risk!</b> ${risk.notDone.length} thing${risk.notDone.length===1?'':'s'} still due this week (${risk.notDone.map(x=>escapeHtml(x.chore.title)).join(', ')}) — ${risk.daysLeft<=0?'today is the last day':`${risk.daysLeft} day${risk.daysLeft===1?'':'s'} left`} to keep your multiplier.</div>`:''}
-      ${dueChores.length===0 && upcomingEvents.length===0 && myReminders.length===0 ? `<div class="empty">Nothing urgent — nice and quiet on the board.</div>` : ''}
-      ${dueChores.length>0 ? `<div class="section-label" style="margin-top:4px;">Chores needing attention</div>${dueChores.slice(0,6).map(choreRow).join('')}`:''}
-      ${myReminders.length>0 ? `<div class="section-label">Reminders for you</div>${myReminders.slice(0,4).map(reminderNote).join('')}`:''}
-      ${upcomingEvents.length>0 ? `<div class="section-label">Coming up</div>${upcomingEvents.slice(0,5).map(eventRow).join('')}`:''}
+      ${myReminders.length===0 ? '' : `<div class="section-label" style="margin-top:4px;">Reminders for you</div>${myReminders.slice(0,4).map(reminderNote).join('')}`}
+      ${risk===null && myReminders.length===0 ? `<div class="empty">Nothing urgent — nice and quiet on the board.</div>` : ''}
+    </div>
+
+    <div class="card">
+      <h3>📅 This week</h3>
+      ${upcomingEvents.length===0?`<div class="empty">Nothing on the calendar in the next 7 days.</div>`:upcomingEvents.map(eventRow).join('')}
+    </div>
+
+    <div class="card">
+      <h3>🧹 Chores overview</h3>
+      <p style="font-size:12.5px;color:var(--ink-soft);margin:-4px 0 10px;">${doneNowCount} of ${totalChores} chore${totalChores===1?'':'s'} currently marked done · ${dueChores.length} need${dueChores.length===1?'s':''} attention</p>
+      ${dueChores.length===0 ? `<div class="empty">Nothing overdue or due today — you're caught up.</div>` : dueChores.slice(0,8).map(choreRow).join('')}
+    </div>
+
+    <div class="card">
+      <h3>💵 Outstanding expenses</h3>
+      ${unpaidTotal<0.005 ? `<div class="empty">Everyone's settled up — nothing outstanding. 🎉</div>` : `
+        <p style="font-size:12.5px;color:var(--ink-soft);margin:-4px 0 10px;">$${unpaidTotal.toFixed(2)} owed across the house right now</p>
+        ${state.members.filter(m=>!m.hidden || Math.abs(bal[m.id]||0)>0.005).map(m=>{
+          const amt = bal[m.id]||0;
+          if(Math.abs(amt)<0.005) return '';
+          return `<div class="row">
+            ${avatarHtml(m,'sm')}
+            <div class="row-main row-title">${escapeHtml(m.name)}</div>
+            <span class="balance-amt ${amt>0.005?'pos':'neg'}">${amt>0.005?'+':''}${amt.toFixed(2)}</span>
+          </div>`;
+        }).join('')}
+        ${moves.length>0?`<div class="section-label">Settle up</div>${moves.map(mv=>`<div class="row"><div class="row-main row-sub"><b>${escapeHtml(memberById(mv.from)?.name||'?')}</b> pays <b>${escapeHtml(memberById(mv.to)?.name||'?')}</b></div><span class="balance-amt">$${mv.amt.toFixed(2)}</span></div>`).join('')}`:''}
+      `}
     </div>
     ${visibleMembers().length>0 ? `
     <div class="card">
@@ -1761,17 +1836,6 @@ function renderDashboard(){
           </div>
         </div>`;
       }).join('')}
-    </div>`:''}
-    ${currentUserId ? `
-    <div class="card">
-      <h3>Your balance</h3>
-      <div style="font-size:14px;">
-        ${myBalance===null ? '' : myBalance>0.005
-          ? `You're owed <span class="balance-amt pos">$${myBalance.toFixed(2)}</span> overall.`
-          : myBalance<-0.005
-          ? `You owe <span class="balance-amt neg">$${Math.abs(myBalance).toFixed(2)}</span> overall.`
-          : `You're all settled up. 🎉`}
-      </div>
     </div>`:''}
   `;
 }
