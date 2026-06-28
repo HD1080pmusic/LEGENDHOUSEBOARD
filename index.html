@@ -327,6 +327,7 @@ const daysUntil = (dateStr, recurring) => {
   return Math.round((target-now)/86400000);
 };
 function memberById(id){ return state.members.find(m=>m.id===id); }
+function visibleMembers(){ return state.members.filter(m=>!m.hidden); }
 function canSeeEvent(e){
   if(!e.visibility || e.visibility==='everyone') return true;
   if(!currentUserId) return false;
@@ -350,6 +351,7 @@ function normalizeState(){
   if(!Array.isArray(state.groceryItems)) state.groceryItems = [];
   if(!Array.isArray(state.xpLog)) state.xpLog = [];
   if(!Array.isArray(state.weeklyScorecard)) state.weeklyScorecard = [];
+  state.members.forEach(m=>{ if(typeof m.hidden !== 'boolean') m.hidden = false; });
   // one-time migration of the old flat-rate logs into the unified, source-tagged xpLog
   if(Array.isArray(state.completionLog) && state.completionLog.length){
     state.completionLog.forEach(e=> state.xpLog.push({ id:e.id, memberId:e.memberId, source:'chore', label:e.choreTitle, xp:e.xp||10, meta:{choreId:e.choreId}, weekKey:e.weekKey, at:e.completedAt }));
@@ -654,7 +656,7 @@ function renderMascotRow(){
   const el = document.getElementById('gifContainer');
   if(!el) return;
   el.innerHTML = MASCOT_GIFS.map(g=>{
-    const owner = state.members.find(m=>m.mascotGif===g.file);
+    const owner = state.members.find(m=>m.mascotGif===g.file && !m.hidden);
     const lvl = owner ? levelInfo(memberXP(owner.id).total).level : null;
     const badge = owner ? `<div class="mascot-badge" title="${escapeHtml(owner.name)} — Level ${lvl}">Lv. ${lvl}</div>` : '';
     return `<div class="mascot-slot">
@@ -823,21 +825,38 @@ function openMemberModal(isFirst){
       currentList.innerHTML = `<div style="font-size:13px;color:var(--ink-soft);">No housemates added yet.</div>`;
       return;
     }
-    currentList.innerHTML = state.members.map(m=>`
-      <div style="padding:8px 0;border-bottom:1px solid var(--line);">
+    const sorted = [...state.members].sort((a,b)=> (a.hidden===b.hidden)?0:(a.hidden?1:-1));
+    currentList.innerHTML = sorted.map(m=>`
+      <div style="padding:8px 0;border-bottom:1px solid var(--line);${m.hidden?'opacity:0.55;':''}">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <span style="display:flex;align-items:center;gap:8px;font-size:13.5px;">${avatarHtml(m,'sm')}${escapeHtml(m.name)}</span>
-          <button class="icon-btn" data-delete-id="${m.id}" title="Remove ${escapeHtml(m.name)}" style="color:var(--danger);">Remove</button>
+          <span style="display:flex;align-items:center;gap:8px;font-size:13.5px;">${avatarHtml(m,'sm')}${escapeHtml(m.name)}${m.hidden?` <span style="font-size:11px;color:var(--ink-soft);">(hidden)</span>`:''}</span>
+          <span style="display:flex;gap:6px;">
+            <button class="icon-btn" data-hide-id="${m.id}" title="${m.hidden?'Unhide':'Hide'} ${escapeHtml(m.name)}">${m.hidden?'Unhide':'Hide'}</button>
+            <button class="icon-btn" data-delete-id="${m.id}" title="Remove ${escapeHtml(m.name)}" style="color:var(--danger);">Remove</button>
+          </span>
         </div>
+        ${m.hidden ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:4px;">Hidden from assignments, the header, and pickers — their past stats, chores, and bills stay intact. Unhide anytime.</div>` : `
         <div style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Mascot in the header (tap to choose, tap again to remove)</div>
         <div style="display:flex;gap:5px;margin-top:4px;flex-wrap:wrap;">
           ${MASCOT_GIFS.map(g=>`
             <img src="${g.file}" alt="${g.alt}" data-mascot-pick="${m.id}" data-mascot-file="${g.file}"
               style="width:26px;height:26px;border-radius:5px;object-fit:cover;cursor:pointer;${g.cls?'object-position:top;':''}border:2px solid ${m.mascotGif===g.file?'var(--purple)':'transparent'};">
           `).join('')}
-        </div>
+        </div>`}
       </div>
     `).join('');
+    currentList.querySelectorAll('[data-hide-id]').forEach(btn=>{
+      btn.onclick = ()=>{
+        const m = memberById(btn.dataset.hideId);
+        if(!m) return;
+        m.hidden = !m.hidden;
+        if(m.hidden && currentUserId===m.id){
+          currentUserId = null;
+          try{ localStorage.removeItem('house-board-who-am-i'); }catch(e){}
+        }
+        saveState(); renderMembersRow(); renderCurrentList(); render();
+      };
+    });
     currentList.querySelectorAll('[data-mascot-pick]').forEach(img=>{
       img.onclick = ()=>{
         const mid = img.dataset.mascotPick;
@@ -876,7 +895,7 @@ function openMemberModal(isFirst){
     const name = nameInput.value.trim();
     if(!name) return;
     const color = MARKER_COLORS[state.members.length % MARKER_COLORS.length];
-    state.members.push({id:uid(), name, color, avatarData:null, mascotGif:null});
+    state.members.push({id:uid(), name, color, avatarData:null, mascotGif:null, hidden:false});
     saveState(); renderMembersRow();
     nameInput.value='';
     renderCurrentList();
@@ -900,13 +919,13 @@ function openMemberModal(isFirst){
 function openAchievementsModal(){
   const wrap = document.createElement('div');
   wrap.className='overlay';
-  let viewingId = currentUserId || (state.members[0] && state.members[0].id);
+  let viewingId = currentUserId || (visibleMembers()[0] && visibleMembers()[0].id) || (state.members[0] && state.members[0].id);
   wrap.innerHTML = `
     <div class="modal">
       <h3>Achievements</h3>
       <div class="form-grid" style="margin-bottom:4px;">
         <div><label>Viewing progress for</label>
-          <select id="achMemberSelect">${state.members.map(m=>`<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('')}</select>
+          <select id="achMemberSelect">${[...state.members].sort((a,b)=>(a.hidden===b.hidden)?0:(a.hidden?1:-1)).map(m=>`<option value="${m.id}">${escapeHtml(m.name)}${m.hidden?' (hidden)':''}</option>`).join('')}</select>
         </div>
       </div>
       <div id="achList"></div>
@@ -990,7 +1009,7 @@ function openQuickTaskModal(){
         <div><label>Task</label><input id="qtTitle" placeholder="e.g. Pick up dry cleaning" autofocus></div>
         <div class="form-row">
           <div><label>Assign to</label>
-            <select id="qtAssignee"><option value="">Unassigned</option>${state.members.map(m=>`<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('')}</select>
+            <select id="qtAssignee"><option value="">Unassigned</option>${visibleMembers().map(m=>`<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('')}</select>
           </div>
           <div><label>Due date</label><input id="qtDue" type="date" value="${todayStr()}"></div>
         </div>
@@ -1028,7 +1047,7 @@ function openWhoAreYou(){
   const chips = wrap.querySelector('#whoChips');
 
   function renderChips(){
-    chips.innerHTML = state.members.map(m=>`
+    chips.innerHTML = visibleMembers().map(m=>`
       <div class="chip who-chip" style="border-color:${m.color}">
         <span class="who-chip-avatar" data-avatar-id="${m.id}" title="Add/change photo">${avatarHtml(m,'sm')}</span>
         <span class="who-chip-name" data-id="${m.id}">${escapeHtml(m.name)}</span>
@@ -1244,7 +1263,7 @@ function streakRiskInfo(memberId){
 }
 function recapData(days){
   const since = Date.now() - days*86400000;
-  return state.members.map(m=>{
+  return visibleMembers().map(m=>{
     const entries = state.xpLog.filter(e=>e.memberId===m.id && e.at>=since);
     return { member:m, xp: entries.reduce((s,e)=>s+e.xp,0), count: entries.length };
   }).sort((a,b)=> b.xp-a.xp);
@@ -1374,7 +1393,7 @@ function levelInfo(xp){
   return { level, into, next:XP_PER_LEVEL, title:titleForLevel(level) };
 }
 function leaderboardData(){
-  return state.members.map(m=>{
+  return visibleMembers().map(m=>{
     const xp = memberXP(m.id);
     return { member:m, ...xp, level: levelInfo(xp.total) };
   }).sort((a,b)=> b.total-a.total);
@@ -1509,13 +1528,14 @@ function choreRow(ch){
         </div>
         <span class="tag today">Set up</span>
         <button class="icon-btn" data-action="swap-chore" data-id="${ch.id}" title="Assign">⇄</button>
+        <button class="icon-btn" data-action="plan-rotation" data-id="${ch.id}" title="${ch.draftRotation?'Edit planned rotation':'Plan a future rotation'}">📋</button>
         <button class="icon-btn" data-action="edit-chore" data-id="${ch.id}">✎</button>
         <button class="icon-btn" data-action="delete-chore" data-id="${ch.id}">✕</button>
       </div>`;
     }
     const avatarsHtml = st.turnMembers.map(id=>avatarHtml(memberById(id),'sm')).join('');
     const names = st.turnMembers.map(id=>memberById(id)?.name||'?').join(' & ');
-    const subtitle = `${names} · every ${ch.rotation.intervalWeeks===1?'week':ch.rotation.intervalWeeks+' wks'}`;
+    const subtitle = `${names} · every ${ch.rotation.intervalWeeks===1?'week':ch.rotation.intervalWeeks+' wks'}${ch.draftRotation?' · 📋 next rotation planned':''}`;
     return `
     <div class="row">
       <div class="check ${done?'done':''}" data-action="toggle-chore" data-id="${ch.id}">${done?'✓':''}</div>
@@ -1526,6 +1546,7 @@ function choreRow(ch){
       </div>
       <span class="tag ${overdue?'overdue':(eff===todayStr()?'today':'')}">${fmtDate(eff)}</span>
       <button class="icon-btn" data-action="swap-chore" data-id="${ch.id}" title="Swap">⇄</button>
+      <button class="icon-btn" data-action="plan-rotation" data-id="${ch.id}" title="${ch.draftRotation?'Edit planned rotation':'Plan a future rotation'}">📋</button>
       <button class="icon-btn" data-action="edit-chore" data-id="${ch.id}">✎</button>
       <button class="icon-btn" data-action="delete-chore" data-id="${ch.id}">✕</button>
     </div>`;
@@ -1588,7 +1609,7 @@ function openSwapModal(ch){
   document.body.appendChild(wrap);
 
   function renderBody(){
-    const available = state.members.filter(m=>!currentMembers.includes(m.id));
+    const available = state.members.filter(m=>!currentMembers.includes(m.id) && !m.hidden);
     wrap.querySelector('.modal').innerHTML = `
       <h3>Swap — ${escapeHtml(ch.title)}</h3>
       <p style="font-size:13px;color:var(--ink-soft);margin-top:-6px;">${ch.type==='fixed'?'Reassign this chore.':'This only changes this turn — the regular rotation continues normally after.'}</p>
@@ -1605,7 +1626,7 @@ function openSwapModal(ch){
       ${currentMembers.length===0 ? `
         <div class="section-label">Assign to</div>
         <div class="chip-select" id="assignChips">
-          ${state.members.map(m=>`<div class="chip" data-id="${m.id}" style="border-color:${m.color}">${escapeHtml(m.name)}</div>`).join('')}
+          ${visibleMembers().map(m=>`<div class="chip" data-id="${m.id}" style="border-color:${m.color}">${escapeHtml(m.name)}</div>`).join('')}
         </div>
       `:''}
       <div id="swapPickWrap" style="display:none;margin-top:10px;">
@@ -1664,7 +1685,7 @@ function renderDashboard(){
       ${myReminders.length>0 ? `<div class="section-label">Reminders for you</div>${myReminders.slice(0,4).map(reminderNote).join('')}`:''}
       ${upcomingEvents.length>0 ? `<div class="section-label">Coming up</div>${upcomingEvents.slice(0,5).map(eventRow).join('')}`:''}
     </div>
-    ${state.members.length>0 ? `
+    ${visibleMembers().length>0 ? `
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
         <h3 style="margin:0;">📅 ${recapPeriod==='week'?'This week':'This month'}'s recap</h3>
@@ -1695,7 +1716,7 @@ function renderDashboard(){
         <h3 style="margin:0;">🏅 Achievements</h3>
         <button class="icon-btn" data-action="open-achievements" style="font-size:12px;text-decoration:underline;color:var(--blue);">Browse all ${BADGE_DEFS.length}</button>
       </div>
-      ${state.members.map(m=>{
+      ${visibleMembers().map(m=>{
         const badges = memberBadges(m.id);
         const earned = badges.filter(b=>b.earned);
         return `
@@ -1791,12 +1812,33 @@ function groceryRow(item){
 }
 
 /* ---------- CHORES TAB ---------- */
+let choreSubTab = 'all';
+function choreCadence(ch){
+  if(ch.type==='rotating'){
+    if(ch.rotation.intervalWeeks===1) return 'weekly';
+    if(ch.rotation.intervalWeeks===2) return 'biweekly';
+    return 'other';
+  }
+  if(ch.type==='fixed'){
+    return ch.frequency==='weekly' ? 'weekly' : 'other';
+  }
+  return 'other';
+}
 function renderChores(){
   const sorted = [...state.chores].sort((a,b)=>{
     const da = isChoreDone(a), db = isChoreDone(b);
     if(da!==db) return da?1:-1;
     return effectiveDate(a).localeCompare(effectiveDate(b));
   });
+  const counts = { all: sorted.length, weekly:0, biweekly:0, other:0 };
+  sorted.forEach(c=> counts[choreCadence(c)]++);
+  const filtered = choreSubTab==='all' ? sorted : sorted.filter(c=>choreCadence(c)===choreSubTab);
+  const subTabDef = [
+    {key:'all', label:'All'},
+    {key:'weekly', label:'Weekly'},
+    {key:'biweekly', label:'Biweekly'},
+    {key:'other', label:'Other'},
+  ];
   return `
     <div class="card">
       <h3>Chores</h3>
@@ -1807,7 +1849,12 @@ function renderChores(){
     </div>
     <div class="card">
       <h3>All chores</h3>
-      ${sorted.length===0?`<div class="empty">No chores yet — add one above.</div>`:sorted.map(choreRow).join('')}
+      <div class="chip-select" style="margin-bottom:12px;">
+        ${subTabDef.filter(t=>t.key==='all'||t.key==='weekly'||t.key==='biweekly'||counts.other>0).map(t=>`
+          <span class="chip ${choreSubTab===t.key?'active':''}" data-action="chore-subtab" data-subtab="${t.key}" style="${choreSubTab===t.key?'background:var(--green);border-color:transparent;color:#fff;':''}">${t.label} (${counts[t.key]})</span>
+        `).join('')}
+      </div>
+      ${filtered.length===0?`<div class="empty">${choreSubTab==='all'?'No chores yet — add one above.':'Nothing in this view yet.'}</div>`:filtered.map(choreRow).join('')}
     </div>
   `;
 }
@@ -1832,7 +1879,7 @@ function openChoreModal(existing){
       <div id="fixedFields">
         <div class="form-row">
           <div><label>Assign to</label>
-            <select id="mAssignee"><option value="">Unassigned</option>${state.members.map(m=>`<option value="${m.id}" ${isEdit && existing.type==='fixed' && existing.assignee===m.id?'selected':''}>${escapeHtml(m.name)}</option>`).join('')}</select>
+            <select id="mAssignee"><option value="">Unassigned</option>${state.members.filter(m=>!m.hidden || (isEdit && existing.type==='fixed' && existing.assignee===m.id)).map(m=>`<option value="${m.id}" ${isEdit && existing.type==='fixed' && existing.assignee===m.id?'selected':''}>${escapeHtml(m.name)}${m.hidden?' (hidden)':''}</option>`).join('')}</select>
           </div>
           <div><label>Frequency</label>
             <select id="mFrequency">
@@ -1901,7 +1948,7 @@ function openChoreModal(existing){
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
         <span style="font-size:12px;font-weight:700;color:var(--ink);width:54px;flex:none;">Turn ${i+1}</span>
         <div class="chip-select" style="flex:1;">
-          ${state.members.map(m=>`<div class="chip turn-chip ${turn.includes(m.id)?'active':''}" data-turn="${i}" data-id="${m.id}" style="${turn.includes(m.id)?`background:${m.color};border-color:${m.color}`:''}">${escapeHtml(m.name)}</div>`).join('')}
+          ${state.members.filter(m=>!m.hidden || turn.includes(m.id)).map(m=>`<div class="chip turn-chip ${turn.includes(m.id)?'active':''}" data-turn="${i}" data-id="${m.id}" style="${turn.includes(m.id)?`background:${m.color};border-color:${m.color}`:''}">${escapeHtml(m.name)}${m.hidden?' (hidden)':''}</div>`).join('')}
         </div>
         <button class="icon-btn" data-moveup="${i}" ${i===0?'disabled':''} style="${i===0?'opacity:.25;cursor:default;':''}">↑</button>
         <button class="icon-btn" data-movedown="${i}" ${i===modalTurns.length-1?'disabled':''} style="${i===modalTurns.length-1?'opacity:.25;cursor:default;':''}">↓</button>
@@ -1988,6 +2035,130 @@ function openChoreModal(existing){
   };
 }
 
+function openDraftRotationModal(ch){
+  const wrap = document.createElement('div');
+  wrap.className='overlay';
+  const hasDraft = !!ch.draftRotation;
+  wrap.innerHTML = `
+    <div class="modal">
+      <h3>Plan next rotation — ${escapeHtml(ch.title)}</h3>
+      <p style="font-size:13px;color:var(--ink-soft);margin-top:-6px;">Build a new schedule now without touching the one running today. When you're ready — say, once someone moves out — hit "Activate now" and this becomes the live rotation.</p>
+      <div class="form-row">
+        <div><label>Repeats every</label>
+          <select id="dInterval">
+            <option value="1" ${hasDraft && ch.draftRotation.intervalWeeks===1?'selected':''}>1 week</option>
+            <option value="2" ${hasDraft && ch.draftRotation.intervalWeeks===2?'selected':''}>2 weeks</option>
+            <option value="3" ${hasDraft && ch.draftRotation.intervalWeeks===3?'selected':''}>3 weeks</option>
+            <option value="4" ${hasDraft && ch.draftRotation.intervalWeeks===4?'selected':''}>4 weeks</option>
+          </select>
+        </div>
+        <div><label>Starting</label><input id="dAnchor" type="date" value="${hasDraft ? ch.draftRotation.anchorDate : todayStr()}"></div>
+      </div>
+      <label style="margin-top:6px;">Turn order for the new rotation</label>
+      <div id="draftTurnsContainer"></div>
+      <button class="btn ghost" id="addDraftTurnBtn" style="margin-top:2px;">+ Add turn</button>
+      <p style="font-size:12px;color:var(--ink-soft);margin-top:8px;">This is completely separate from today's live rotation — nothing here affects the current schedule until you activate it.</p>
+      <div class="section-label" style="margin-top:14px;">Schedule preview (once activated)</div>
+      <div id="draftTurnPreview"></div>
+      <div id="draftError" class="error-text" style="display:none;"></div>
+      <div class="modal-actions">
+        ${hasDraft?`<button class="btn ghost" id="discardDraftBtn" style="color:var(--danger);border-color:var(--danger);">Discard draft</button>`:''}
+        <button class="btn ghost" id="cancelDraft">Close</button>
+        <button class="btn ghost" id="saveDraftBtn">Save draft</button>
+        ${hasDraft?`<button class="btn" id="activateDraftBtn">🔄 Activate now</button>`:''}
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+
+  let draftTurns = hasDraft ? ch.draftRotation.turns.map(t=>[...t]) : [[]];
+
+  function renderDraftPreview(){
+    const previewEl = wrap.querySelector('#draftTurnPreview');
+    const turns = draftTurns.filter(t=>t.length>0);
+    if(turns.length===0){ previewEl.innerHTML = `<div class="empty" style="padding:6px 4px;">Add people to a turn to preview the schedule.</div>`; return; }
+    const intervalWeeks = parseInt(wrap.querySelector('#dInterval').value,10);
+    const anchor = wrap.querySelector('#dAnchor').value || todayStr();
+    let rows = '';
+    for(let i=0;i<Math.min(turns.length,6);i++){
+      const start = new Date(anchor+'T00:00:00'); start.setDate(start.getDate()+i*intervalWeeks*7);
+      const end = new Date(start); end.setDate(end.getDate()+intervalWeeks*7-1);
+      const names = turns[i].map(id=>memberById(id)?.name||'?').join(' & ');
+      rows += `<div class="row" style="padding:6px 2px;">
+        <span class="tag event">${fmtDate(isoDate(start))}–${fmtDate(isoDate(end))}</span>
+        <div class="row-main row-sub">${escapeHtml(names)}</div>
+      </div>`;
+    }
+    previewEl.innerHTML = rows + `<div style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;">Then repeats from turn 1 again.</div>`;
+  }
+
+  function renderDraftTurns(){
+    const cont = wrap.querySelector('#draftTurnsContainer');
+    cont.innerHTML = draftTurns.map((turn,i)=>`
+      ${i>0?`<div style="text-align:center;color:var(--ink-soft);font-size:12px;margin:-2px 0 4px;">↓ then</div>`:''}
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+        <span style="font-size:12px;font-weight:700;color:var(--ink);width:54px;flex:none;">Turn ${i+1}</span>
+        <div class="chip-select" style="flex:1;">
+          ${state.members.filter(m=>!m.hidden || turn.includes(m.id)).map(m=>`<div class="chip turn-chip" data-turn="${i}" data-id="${m.id}" style="${turn.includes(m.id)?`background:${m.color};border-color:${m.color}`:''}">${escapeHtml(m.name)}${m.hidden?' (hidden)':''}</div>`).join('')}
+        </div>
+        <button class="icon-btn" data-dmoveup="${i}" ${i===0?'disabled':''} style="${i===0?'opacity:.25;cursor:default;':''}">↑</button>
+        <button class="icon-btn" data-dmovedown="${i}" ${i===draftTurns.length-1?'disabled':''} style="${i===draftTurns.length-1?'opacity:.25;cursor:default;':''}">↓</button>
+        ${draftTurns.length>1?`<button class="icon-btn" data-dremoveturn="${i}">✕</button>`:''}
+      </div>
+    `).join('');
+    cont.querySelectorAll('.turn-chip').forEach(chip=>{
+      chip.onclick = ()=>{
+        const ti = +chip.dataset.turn, mid = chip.dataset.id;
+        const turn = draftTurns[ti];
+        const idx = turn.indexOf(mid);
+        if(idx>=0) turn.splice(idx,1); else turn.push(mid);
+        renderDraftTurns();
+      };
+    });
+    cont.querySelectorAll('[data-dmoveup]:not([disabled])').forEach(btn=>{
+      btn.onclick = ()=>{ const i=+btn.dataset.dmoveup; [draftTurns[i-1],draftTurns[i]]=[draftTurns[i],draftTurns[i-1]]; renderDraftTurns(); };
+    });
+    cont.querySelectorAll('[data-dmovedown]:not([disabled])').forEach(btn=>{
+      btn.onclick = ()=>{ const i=+btn.dataset.dmovedown; [draftTurns[i+1],draftTurns[i]]=[draftTurns[i],draftTurns[i+1]]; renderDraftTurns(); };
+    });
+    cont.querySelectorAll('[data-dremoveturn]').forEach(btn=>{
+      btn.onclick = ()=>{ draftTurns.splice(+btn.dataset.dremoveturn,1); renderDraftTurns(); };
+    });
+    renderDraftPreview();
+  }
+  renderDraftTurns();
+  wrap.querySelector('#addDraftTurnBtn').onclick = ()=>{ draftTurns.push([]); renderDraftTurns(); };
+  wrap.querySelector('#dInterval').addEventListener('change', renderDraftPreview);
+  wrap.querySelector('#dAnchor').addEventListener('change', renderDraftPreview);
+
+  function showError(msg){ const el = wrap.querySelector('#draftError'); el.textContent = msg; el.style.display='block'; }
+
+  wrap.querySelector('#cancelDraft').onclick = ()=> document.body.removeChild(wrap);
+  if(hasDraft){
+    wrap.querySelector('#discardDraftBtn').onclick = ()=>{
+      if(!confirm('Discard this planned rotation? This cannot be undone.')) return;
+      ch.draftRotation = null;
+      saveState(); document.body.removeChild(wrap); render();
+    };
+    wrap.querySelector('#activateDraftBtn').onclick = ()=>{
+      if(!confirm(`Switch "${ch.title}" to the new rotation now? The current schedule will be replaced immediately.`)) return;
+      ch.rotation = { intervalWeeks: ch.draftRotation.intervalWeeks, anchorDate: todayStr(), turns: ch.draftRotation.turns };
+      ch.doneForPeriod = null;
+      ch.draftRotation = null;
+      saveState(); document.body.removeChild(wrap); render();
+    };
+  }
+  wrap.querySelector('#saveDraftBtn').onclick = ()=>{
+    const turns = draftTurns.filter(t=>t.length>0);
+    if(turns.length===0){ showError('Add at least one person to at least one turn.'); return; }
+    ch.draftRotation = {
+      intervalWeeks: parseInt(wrap.querySelector('#dInterval').value,10),
+      anchorDate: wrap.querySelector('#dAnchor').value || todayStr(),
+      turns
+    };
+    saveState(); document.body.removeChild(wrap); render();
+  };
+}
+
 function openLinkedChoreModal(existing){
   const wrap = document.createElement('div');
   wrap.className='overlay';
@@ -2029,7 +2200,7 @@ let weeklyRoles = [];
 
 function openWeeklyRotationModal(){
   const plan = state.weeklyRotation;
-  weeklyOrder = plan ? [...plan.order] : state.members.map(m=>m.id);
+  weeklyOrder = plan ? [...plan.order] : visibleMembers().map(m=>m.id);
   weeklyRoles = plan ? plan.roles.map(r=>({...r})) : [];
 
   const wrap = document.createElement('div');
@@ -2098,7 +2269,7 @@ function openWeeklyRotationModal(){
   function renderOrder(){
     const cont = wrap.querySelector('#orderList');
     if(state.members.length===0){ cont.innerHTML = `<div class="empty" style="padding:6px 4px;">Add housemates first using the + in the header.</div>`; return; }
-    const excluded = state.members.filter(m=>!weeklyOrder.includes(m.id));
+    const excluded = state.members.filter(m=>!weeklyOrder.includes(m.id) && !m.hidden);
     let html = weeklyOrder.map((mid,i)=>{
       const m = memberById(mid);
       return `<div class="row" style="padding:6px 2px;">
@@ -2295,7 +2466,7 @@ function renderCalendar(){
         <div id="eventVisibleToWrap" style="display:none;">
           <label>Share with</label>
           <div class="chip-select" id="eventVisibleToChips">
-            ${state.members.map(m=>`<div class="chip" data-id="${m.id}" style="border-color:${m.color}">${escapeHtml(m.name)}</div>`).join('')}
+            ${visibleMembers().map(m=>`<div class="chip" data-id="${m.id}" style="border-color:${m.color}">${escapeHtml(m.name)}</div>`).join('')}
           </div>
         </div>
       </div>
@@ -2367,10 +2538,10 @@ function renderReminders(){
         <div><label>Message</label><textarea id="reminderMsg" rows="2" placeholder="e.g. Don't forget to pay your share of internet!"></textarea></div>
         <div class="form-row">
           <div><label>From</label>
-            <select id="reminderFrom">${state.members.map(m=>`<option value="${m.id}" ${m.id===currentUserId?'selected':''}>${escapeHtml(m.name)}</option>`).join('')}</select>
+            <select id="reminderFrom">${visibleMembers().map(m=>`<option value="${m.id}" ${m.id===currentUserId?'selected':''}>${escapeHtml(m.name)}</option>`).join('')}</select>
           </div>
           <div><label>To</label>
-            <select id="reminderTo"><option value="everyone">Everyone</option>${state.members.map(m=>`<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('')}</select>
+            <select id="reminderTo"><option value="everyone">Everyone</option>${visibleMembers().map(m=>`<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('')}</select>
           </div>
         </div>
       </div>
@@ -2458,12 +2629,12 @@ function renderBills(){
           <div><label>Amount ($)</label><input id="expAmount" type="number" min="0" step="0.01" placeholder="0.00"></div>
         </div>
         <div><label>Paid by</label>
-          <select id="expPaidBy">${state.members.map(m=>`<option value="${m.id}" ${m.id===currentUserId?'selected':''}>${escapeHtml(m.name)}</option>`).join('')}</select>
+          <select id="expPaidBy">${visibleMembers().map(m=>`<option value="${m.id}" ${m.id===currentUserId?'selected':''}>${escapeHtml(m.name)}</option>`).join('')}</select>
         </div>
         <div>
           <label>Split among</label>
           <div class="chip-select" id="splitChips">
-            ${state.members.map(m=>`<div class="chip active" data-id="${m.id}" style="background:${m.color};border-color:${m.color}">${escapeHtml(m.name)}</div>`).join('')}
+            ${visibleMembers().map(m=>`<div class="chip active" data-id="${m.id}" style="background:${m.color};border-color:${m.color}">${escapeHtml(m.name)}</div>`).join('')}
           </div>
         </div>
       </div>
@@ -2472,11 +2643,11 @@ function renderBills(){
 
     <div class="card">
       <h3>Balances</h3>
-      ${state.members.map(m=>{
+      ${state.members.filter(m=>!m.hidden || Math.abs(bal[m.id]||0)>0.005).map(m=>{
         const amt = bal[m.id]||0;
         return `<div class="row">
           ${avatarHtml(m,'sm')}
-          <div class="row-main row-title">${escapeHtml(m.name)}</div>
+          <div class="row-main row-title">${escapeHtml(m.name)}${m.hidden?` <span style="font-weight:400;color:var(--ink-soft);font-size:12px;">(hidden, still owes/owed)</span>`:''}</div>
           <span class="balance-amt ${amt>0.005?'pos':amt<-0.005?'neg':''}">${amt>0.005?'+':''}${amt.toFixed(2)}</span>
         </div>`;
       }).join('')}
@@ -2584,6 +2755,10 @@ function attachHandlers(){
     recapPeriod = el.dataset.period;
     render();
   });
+  c.querySelectorAll('[data-action="chore-subtab"]').forEach(el=> el.onclick = ()=>{
+    choreSubTab = el.dataset.subtab;
+    render();
+  });
   c.querySelectorAll('[data-action="edit-chore"]').forEach(el=> el.onclick = ()=>{
     const ch = state.chores.find(x=>x.id===el.dataset.id);
     if(ch) openChoreModal(ch);
@@ -2591,6 +2766,10 @@ function attachHandlers(){
   c.querySelectorAll('[data-action="swap-chore"]').forEach(el=> el.onclick = ()=>{
     const ch = state.chores.find(x=>x.id===el.dataset.id);
     if(ch) openSwapModal(ch);
+  });
+  c.querySelectorAll('[data-action="plan-rotation"]').forEach(el=> el.onclick = ()=>{
+    const ch = state.chores.find(x=>x.id===el.dataset.id);
+    if(ch) openDraftRotationModal(ch);
   });
   const openWeeklyBtn = c.querySelector('[data-action="open-weekly-rotation"]');
   if(openWeeklyBtn) openWeeklyBtn.onclick = openWeeklyRotationModal;
