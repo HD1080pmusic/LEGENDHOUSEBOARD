@@ -17,7 +17,7 @@
 
 /* GIF Section Styling */
 .title-container { display: flex; flex-direction: column; gap: 8px; }
-.gif-container { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; align-items: flex-start; }
+.gif-container { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; align-items: flex-start; }
 .gif-item { 
   width: 42px; 
   height: 42px; 
@@ -28,11 +28,12 @@
 }
 .gif-trunks { object-position: top; } /* Shifts Trunks upward so he isn't cropped */
 .gif-piccolo { object-position: top; } /* Piccolo's gif is tall, so keep his head/torso in frame */
-.mascot-slot{ display:flex; flex-direction:column; align-items:center; gap:2px; }
+.mascot-slot{ position:relative; display:flex; flex-direction:column; align-items:center; }
 .mascot-badge{
-  font-size:9px; font-family:'JetBrains Mono',monospace; font-weight:700;
-  background:var(--purple); color:#fff; width:16px; height:16px; line-height:16px;
-  text-align:center; border-radius:50%; cursor:default;
+  position:absolute; top:100%; left:50%; transform:translateX(-50%); margin-top:2px;
+  font-size:8px; font-family:'JetBrains Mono',monospace; font-weight:700;
+  background:var(--purple); color:#fff; padding:1px 4px; line-height:1.5;
+  text-align:center; border-radius:8px; cursor:default; white-space:nowrap;
 }
 
 :root{
@@ -655,7 +656,7 @@ function renderMascotRow(){
   el.innerHTML = MASCOT_GIFS.map(g=>{
     const owner = state.members.find(m=>m.mascotGif===g.file);
     const lvl = owner ? levelInfo(memberXP(owner.id).total).level : null;
-    const badge = owner ? `<div class="mascot-badge" title="${escapeHtml(owner.name)} — Level ${lvl}">${lvl}</div>` : '';
+    const badge = owner ? `<div class="mascot-badge" title="${escapeHtml(owner.name)} — Level ${lvl}">Lv. ${lvl}</div>` : '';
     return `<div class="mascot-slot">
       <img src="${g.file}" alt="${g.alt}" class="gif-item ${g.cls||''}">
       ${badge}
