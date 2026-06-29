@@ -62,6 +62,7 @@
   --teal:#1FA3A3;
   --lime:#7DAF3C;
   --danger:#D64545;
+  --gold:#D4A72C;
   --chalk:#F5F2E6;
   --paper-rule:#BFD7EE;
   --margin-red:#E2675C;
@@ -150,6 +151,7 @@ body{
 .tab[data-tab="reminders"].active{border-bottom-color:var(--orange);}
 .tab[data-tab="bills"].active{border-bottom-color:var(--teal);}
 .tab[data-tab="rules"].active{border-bottom-color:var(--pink);}
+.tab[data-tab="pet"].active{border-bottom-color:var(--gold);}
 
 .card{ background:var(--card);border-radius:14px;padding:16px 18px; box-shadow:var(--shadow); margin-bottom:14px; }
 .card h3{margin:0 0 10px;font-family:'Kalam',cursive;font-size:19px;font-weight:700;}
@@ -427,7 +429,115 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
 }
 .memory-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 220px; margin: 10px auto 0; }
 .memory-card { width: 100%; height: 58px; font-size: 20px; }
-.minigame-card.matched { opacity: .5; cursor: default; border-color: var(--green); }
+.pet-glance-card { cursor: pointer; transition: transform .12s ease; }
+.pet-glance-card:hover { transform: translateY(-2px); }
+.pet-glance-row { display: flex; gap: 12px; align-items: center; }
+.pet-glance-thumb {
+  width: 64px; height: 64px; flex: none; border-radius: 10px;
+  background: radial-gradient(120% 100% at 50% 0%, var(--lcd-bg) 0%, var(--lcd-bg2) 100%);
+  border: 3px solid var(--device-bezel); display: flex; align-items: center; justify-content: center;
+  overflow: hidden; transition: background .5s ease;
+}
+.pet-glance-thumb img { width: 80%; height: 80%; object-fit: contain; }
+.pet-glance-thumb.sleeping-mode { background: radial-gradient(120% 100% at 50% 0%, #1b2a3a 0%, #0e1622 100%); }
+.pet-glance-stats { flex: 1; min-width: 0; }
+
+/* ---------- Dedicated Pet tab: full Tamagotchi "handheld device" page ---------- */
+.pet-tab-page { display: flex; justify-content: center; padding: 40px 0 30px; }
+.pet-device-shell {
+  position: relative;
+  width: 100%; max-width: 380px;
+  background: var(--shell-grad, linear-gradient(165deg, #2a4530, var(--device-bezel) 55%, var(--device-bezel2)));
+  border-radius: 50% 50% 44% 44% / 40% 40% 32% 32%;
+  padding: 26px 24px 24px;
+  box-shadow: 0 10px 0 rgba(0,0,0,.16), 0 14px 30px rgba(0,0,0,.22), inset 0 0 0 2px rgba(255,255,255,.35);
+}
+.pet-device-shell::before{
+  /* glossy highlight, like rounded plastic catching light */
+  content:''; position:absolute; top:8%; left:10%; width:38%; height:22%; border-radius:50%;
+  background: radial-gradient(ellipse at 35% 30%, rgba(255,255,255,.55), rgba(255,255,255,0) 70%);
+  pointer-events:none;
+}
+.device-antenna-side {
+  position: absolute; top: -16px; left: 14%; width: 17px; height: 30px;
+  background: var(--shell-grad, var(--device-bezel)); border-radius: 7px;
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,.18);
+  background-image: repeating-linear-gradient(0deg, rgba(0,0,0,.12) 0px, rgba(0,0,0,.12) 2px, transparent 2px, transparent 7px);
+  transform: rotate(-6deg);
+}
+.device-keyhole {
+  position: absolute; top: -2px; right: 13%; width: 16px; height: 16px; border-radius: 50%;
+  border: 3px solid rgba(0,0,0,.28); background: rgba(0,0,0,.08);
+}
+.device-brand-bubble {
+  position: relative; z-index: 2; text-align: center; margin: 0 auto 10px; width: fit-content;
+  background: rgba(255,255,255,.55); border: 2px solid rgba(255,255,255,.8);
+  border-radius: 20px; padding: 4px 16px;
+  font-family: var(--pixel-font); font-size: 9px; color: #6b3a55; letter-spacing: .03em;
+  box-shadow: 0 2px 0 rgba(0,0,0,.06);
+}
+.device-led { position: absolute; top: 14px; right: 16px; width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 6px 1px currentColor; z-index: 3; }
+.pet-device-shell button.icon-btn{ color:#6b3a55; }
+.pet-device-shell button.icon-btn:hover, .pet-device-shell button.icon-btn:active{ background:rgba(255,255,255,.4); color:#3a1f30; }
+.device-screen-ring {
+  position: relative; z-index: 2;
+  background-color: rgba(255,255,255,.32);
+  background-image: radial-gradient(circle, rgba(255,255,255,.85) 2.5px, transparent 3px);
+  background-size: 16px 16px;
+  border-radius: 28px; padding: 12px 10px;
+  box-shadow: inset 0 1px 3px rgba(255,255,255,.4), inset 0 -2px 6px rgba(0,0,0,.05);
+}
+.device-icon-row { display: flex; justify-content: space-around; gap: 4px; }
+.device-icon-row.top { margin-bottom: 7px; }
+.device-icon-row.bottom { margin-top: 7px; }
+.device-icon {
+  width: 30px; height: 30px; border-radius: 9px; flex: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 15px;
+  background: rgba(255,255,255,.5); border: 2px solid rgba(255,255,255,.7);
+  transition: all .12s ease; opacity: .75;
+}
+.device-icon.selected { background: #fff; border-color: #fff; transform: scale(1.18); opacity: 1; box-shadow: 0 0 0 3px rgba(255,255,255,.5), 0 2px 4px rgba(0,0,0,.2); }
+.device-icon.is-disabled { opacity: .35; }
+.device-screen-frame {
+  position: relative; z-index: 2;
+  background: linear-gradient(165deg, rgba(255,255,255,.5), rgba(255,255,255,.15));
+  border-radius: 22px; padding: 7px;
+  box-shadow: inset 0 1px 2px rgba(255,255,255,.4), 0 2px 6px rgba(0,0,0,.12);
+}
+.device-screen-frame-inner {
+  background: rgba(0,0,0,.22); border-radius: 17px; padding: 7px;
+  box-shadow: inset 0 2px 8px rgba(0,0,0,.35);
+}
+.device-action-label {
+  text-align: center; font-family: var(--pixel-font); font-size: 10px; color: #6b3a55;
+  margin-top: 14px; position: relative; z-index: 2; min-height: 14px;
+}
+.device-buttons-row { display: grid; grid-template-columns: repeat(3, 50px); justify-content: center; gap: 18px; margin-top: 8px; position: relative; z-index: 2; }
+.tama-btn {
+  width: 46px; height: 46px; border-radius: 50%; flex: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border: none; cursor: pointer; color: #6b3a55; font-family: var(--pixel-font); font-size: 8px;
+  background: linear-gradient(165deg, #fff, #ffd9ea);
+  box-shadow: 0 4px 0 rgba(0,0,0,.18), inset 0 -3px 6px rgba(0,0,0,.08), inset 0 2px 4px rgba(255,255,255,.6);
+  transition: transform .08s ease;
+}
+.tama-btn span { font-size: 13px; line-height: 1; }
+.tama-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.18), inset 0 -1px 3px rgba(0,0,0,.08); }
+.tama-btn-select { background: linear-gradient(165deg, #fff, #ffc4dd); }
+.pet-viewport-lg { height: 190px; border-width: 5px; margin: 0; }
+.chao-graphics-wrap-lg { width: 130px; }
+.device-info-row { text-align: center; margin-top: 12px; position: relative; z-index: 2; }
+.device-info-badge { display: inline-block; font-family: var(--pixel-font); font-size: 9.5px; background: rgba(255,255,255,.45); border: 1px solid rgba(255,255,255,.7); color: #6b3a55; padding: 5px 11px; border-radius: 20px; }
+.device-pet-name { font-family: var(--pixel-font); font-size: 13px; color: #4a2a3d; margin-top: 11px; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.device-species-label { font-family: var(--pixel-font); font-size: 9px; color: #8a5d76; margin-top: 6px; }
+.pet-device-shell .stat-header { color: #5a3550; }
+.pet-device-shell .stat-box { background: rgba(255,255,255,.45); border-color: rgba(255,255,255,.7); }
+.pet-device-shell .minigame-deck { background: rgba(255,255,255,.4); border-color: rgba(255,255,255,.65); }
+.pet-device-shell .minigame-deck span { color: #5a3550; }
+.pet-device-shell .minigame-menu-btn { background: linear-gradient(165deg,#fff,#ffd9ea); color:#6b3a55; box-shadow:0 2px 0 rgba(0,0,0,.15); }
+.pet-device-shell .minigame-menu-btn:hover { background: linear-gradient(165deg,#fff,#ffc4dd); }
+.stat-grid-lg { grid-template-columns: repeat(2, 1fr); margin-top: 18px; position: relative; z-index: 2; }
+
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -459,6 +569,7 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
     <button class="tab" data-tab="reminders">⏰ Reminders</button>
     <button class="tab" data-tab="bills">💵 Bills</button>
     <button class="tab" data-tab="rules">📋 Rules</button>
+    <button class="tab" data-tab="pet">🐾 Pet</button>
   </div>
 
   <div id="content"></div>
@@ -1302,6 +1413,7 @@ function render(){
   else if(activeTab==='reminders') c.innerHTML = renderReminders();
   else if(activeTab==='bills') c.innerHTML = renderBills();
   else if(activeTab==='rules') c.innerHTML = renderRules();
+  else if(activeTab==='pet') c.innerHTML = renderPetTab();
   attachHandlers();
   renderMembersRow();
   checkLevelUps();
@@ -1598,7 +1710,7 @@ function petArtFor(member){
 function ensurePet(member){
   const now = Date.now();
   if(!member.pet){
-    const past = now - 2*86400000; // a couple days of starting "buffer" so care is needed but not urgent immediately
+    const past = now - 4*3600000; // a few hours of starting "buffer" so the pet looks cared-for at birth, not neglected
     member.pet = {
       name: null, createdAt: now, species: null,
       lastFed: past, lastHappy: past, lastPlayed: past, lastCleaned: past,
@@ -1610,7 +1722,7 @@ function ensurePet(member){
   }
   // migrate any older/partial pet records up to the full schema
   const p = member.pet;
-  if(typeof p.lastHappy !== 'number') p.lastHappy = p.lastPlayed || now - 2*86400000;
+  if(typeof p.lastHappy !== 'number') p.lastHappy = p.lastPlayed || now - 4*3600000;
   if(typeof p.lastPlayed !== 'number') p.lastPlayed = p.lastHappy;
   if(typeof p.lastCleaned !== 'number') p.lastCleaned = p.createdAt || now;
   if(typeof p.isSleeping !== 'boolean') p.isSleeping = false;
@@ -1715,6 +1827,46 @@ function feedPet(memberId){
 // happiness/evolution/XP are granted on the mini-game result, see below.
 const MOLE_HIT_WINDOW_MS = 1150; // must be < the .mole-target CSS animation duration
 const MEMORY_SYMBOLS = ['🍎','🎾','⭐'];
+// "Real Tamagotchi" 3-button navigation: an icon strip around the screen
+// represents the 6 actions, button A/C move the highlight, button B confirms
+// it. Icons are also directly clickable (selects + confirms in one tap) so
+// the device stays usable on mouse/touch, not just via the 3 buttons.
+const PET_ICON_ACTIONS = ['feed','play','sleep','clean','heal','pet'];
+let petMenuIndex = 0;
+function petIconDisabled(m, full, key){
+  const sleeping = full.isSleeping;
+  if(key==='feed') return sleeping;
+  if(key==='play') return sleeping;
+  if(key==='sleep') return false;
+  if(key==='clean') return !full.hasMess || sleeping;
+  if(key==='heal') return !full.isSick;
+  if(key==='pet') return sleeping;
+  return false;
+}
+function petMenuMove(dir){
+  petMenuIndex = (petMenuIndex + dir + PET_ICON_ACTIONS.length) % PET_ICON_ACTIONS.length;
+  render();
+}
+function petMenuSelectIcon(idx){
+  petMenuIndex = ((idx % PET_ICON_ACTIONS.length) + PET_ICON_ACTIONS.length) % PET_ICON_ACTIONS.length;
+  petMenuConfirm();
+}
+function petMenuConfirm(){
+  if(!currentUserId) return;
+  const m = memberById(currentUserId); if(!m) return;
+  ensurePet(m);
+  const full = petFullStats(m);
+  const key = PET_ICON_ACTIONS[petMenuIndex];
+  if(petIconDisabled(m, full, key)){ render(); return; }
+  switch(key){
+    case 'feed': feedPet(currentUserId); break;
+    case 'play': openPetPlayMenu(currentUserId); break;
+    case 'sleep': sleepPet(currentUserId); break;
+    case 'clean': cleanPet(currentUserId); break;
+    case 'heal': healPet(currentUserId); break;
+    case 'pet': pettingPet(currentUserId); break;
+  }
+}
 function resetPetUI(){
   return {
     ownerId: null, menuOpen: false, activeGame: null, gameStartedAt: 0,
@@ -1999,6 +2151,13 @@ function choreXPValue(ch){
   return XP.choreOneTime;
 }
 const XP_PER_LEVEL = 100;
+// The first 5 level-ups are cheaper so new housemates feel progress fast:
+// Lv1->2 needs 30 XP, then +5 XP per level after that (35, 40, 45, 50),
+// and from Lv6 onward it's back to the standard flat 100 XP/level.
+const EARLY_LEVEL_THRESHOLDS = [30, 35, 40, 45, 50];
+function thresholdForLevel(level){
+  return level <= EARLY_LEVEL_THRESHOLDS.length ? EARLY_LEVEL_THRESHOLDS[level-1] : XP_PER_LEVEL;
+}
 const LEVEL_TITLES = [
   'New Roommate', 'Roommate', 'Reliable Roommate', 'House Helper', 'House Hero',
   'Household MVP', 'Chore Champion', 'House Legend',
@@ -2016,9 +2175,13 @@ function memberXP(memberId){
   return { total, choreCount, assignCount, streak, tier };
 }
 function levelInfo(xp){
-  const level = 1 + Math.floor(xp/XP_PER_LEVEL);
-  const into = xp % XP_PER_LEVEL;
-  return { level, into, next:XP_PER_LEVEL, title:titleForLevel(level) };
+  let level = 1, remaining = Math.max(0, xp);
+  while(remaining >= thresholdForLevel(level)){
+    remaining -= thresholdForLevel(level);
+    level++;
+  }
+  const next = thresholdForLevel(level);
+  return { level, into: remaining, next, pct: Math.min(100, (remaining/next)*100), title: titleForLevel(level) };
 }
 function leaderboardData(){
   return visibleMembers().map(m=>{
@@ -2360,141 +2523,39 @@ function renderDashboard(){
       `}
     </div>
 
-    <div class="card">
+    <div class="card card-half pet-glance-card" data-action="goto-pet-tab">
       <h3>🐾 Your pet</h3>
       ${!currentUserId ? `<div class="empty">Tap "You: choose" up top to get a pet of your own.</div>` : (()=>{
         const m = memberById(currentUserId);
         if(!m) return `<div class="empty">Tap "You: choose" up top to get a pet of your own.</div>`;
         ensurePet(m);
-        const full = petFullStats(m); // mutates in-memory decay only, no save
-        const pm = petMoodInfo(m);    // hunger/happiness mood — drives the productivity XP penalty
-        const careCount = petCareCount(m.id);
-        maybeHatchPet(m); // locks in a random species the instant the hatch threshold is reached
+        const full = petFullStats(m);
+        const pm = petMoodInfo(m);
+        maybeHatchPet(m);
         const hatched = !!m.pet.species;
         const speciesLabel = hatched ? SPECIES_LABELS[m.pet.species] : 'Egg';
-        const ageDays = Math.floor(hrsSince(m.pet.createdAt)/24);
-        const canFeed = canFeedToday(m), canPlay = canPlayToday(m), canClean = canCleanToday(m);
         const sleeping = full.isSleeping;
+        const art = petArtFor(m);
+        const isPixel = !hatched || PET_PIXEL_ART_SPECIES[m.pet.species];
         const moodNote = pm.mood==='sick'
-          ? `<div class="empty risk-banner" style="background:#FBEAEA;border-radius:8px;padding:8px 10px;margin-top:10px;">😢 Hungry &amp; unhappy — all your XP is cut in half until ${escapeHtml(m.name)}'s pet is fed and played with.</div>`
+          ? `<div class="empty risk-banner" style="background:#FBEAEA;border-radius:8px;padding:7px 10px;margin-top:8px;font-size:12.5px;">😢 All your XP is cut in half until ${escapeHtml(m.name)}'s pet is fed and played with.</div>`
           : pm.mood==='neglected'
-          ? `<div class="empty risk-banner" style="background:#FFF1DF;border-radius:8px;padding:8px 10px;margin-top:10px;">😟 Neglected — your streak bonus is paused until your pet's taken care of.</div>`
+          ? `<div class="empty risk-banner" style="background:#FFF1DF;border-radius:8px;padding:7px 10px;margin-top:8px;font-size:12.5px;">😟 Your streak bonus is paused until your pet's taken care of.</div>`
           : '';
-        const playMenuOpen = petUI.ownerId===m.id && petUI.menuOpen && !petUI.activeGame;
-        const timingGameOpen = petUI.ownerId===m.id && petUI.activeGame==='timing';
-        const cardGameOpen = petUI.ownerId===m.id && petUI.activeGame==='card';
-        const moleGameOpen = petUI.ownerId===m.id && petUI.activeGame==='mole';
-        const memoryGameOpen = petUI.ownerId===m.id && petUI.activeGame==='memory';
-        const memoryDone = memoryGameOpen && petUI.memoryMatched.length===petUI.memoryCards.length;
-        const gameInstructions = timingGameOpen
-          ? 'Stop the bar inside the GREEN zone — click "TAP NOW!"'
-          : cardGameOpen
-          ? `Your pet hid a ⭐ under one card — guess which!`
-          : moleGameOpen
-          ? 'Tap your pet before it ducks away!'
-          : memoryGameOpen
-          ? (memoryDone ? 'Found them all! Nice work.' : 'Flip two cards to find a matching pair.')
-          : playMenuOpen
-          ? 'Choose a game to play with your pet:'
-          : 'Click "Play" to spend time with your pet.';
-
         return `
-        <div class="game-layout">
-          <div class="pet-screen-column">
-            <div id="petViewport" class="pet-viewport ${sleeping?'sleeping-mode':''}">
-              ${full.isSick ? `<div class="status-badge-overlay">⚠️ SICK</div>` : ''}
-              ${full.hasMess && !sleeping ? `<div class="mess-element">💩</div>` : ''}
-              ${sleeping ? `<div class="sleep-zzz">💤</div>` : ''}
-              <div class="chao-graphics-wrap ${sleeping?'':(hatched?'chao-float':'egg-wobble')}" id="chaoPetAsset">
-                ${(()=>{
-                  const art = petArtFor(m);
-                  const isPixel = !hatched || PET_PIXEL_ART_SPECIES[m.pet.species];
-                  return `<img src="${art}" class="${isPixel?'pixel-art':''}" alt="${escapeHtml(speciesLabel)} pet">`;
-                })()}
-              </div>
-            </div>
-            <div style="font-size:9.5px;background:var(--board-bg2);padding:5px 10px;border-radius:20px;font-family:var(--pixel-font);margin-top:10px;white-space:nowrap;">
-              AGE ${ageDays}D · CARE ${careCount}${!hatched?` (${EVOS_TO_HATCH} TO HATCH)`:''}
-            </div>
-            <div style="font-family:var(--pixel-font);font-size:12px;margin-top:10px;display:flex;align-items:center;gap:4px;">${hatched ? escapeHtml(m.pet.name||'Unnamed') : 'Egg'} <button class="icon-btn" data-action="rename-pet" style="font-size:11px;min-width:0;min-height:0;padding:2px 4px;">✎</button></div>
-            <div style="font-family:var(--pixel-font);font-size:9px;color:var(--ink-soft);margin-top:6px;">${speciesLabel.toUpperCase()} · ${(sleeping?'ASLEEP':pm.label).toUpperCase()}</div>
+        <div class="pet-glance-row">
+          <div class="pet-glance-thumb ${sleeping?'sleeping-mode':''}">
+            <img src="${art}" class="${isPixel?'pixel-art':''}" alt="${escapeHtml(speciesLabel)} pet">
           </div>
-
-          <div class="pet-controls-column">
-            <div class="stat-grid">
-              <div class="stat-box">
-                <div class="stat-header"><span>🍖 Hunger</span><span>${Math.round(full.hunger)}%</span></div>
-                <div class="stat-progress-bar"><div class="stat-fill-inner" style="width:${full.hunger}%;background:var(--orange)"></div></div>
-              </div>
-              <div class="stat-box">
-                <div class="stat-header"><span>🎾 Happy</span><span>${Math.round(full.happiness)}%</span></div>
-                <div class="stat-progress-bar"><div class="stat-fill-inner" style="width:${full.happiness}%;background:var(--blue)"></div></div>
-              </div>
-              <div class="stat-box">
-                <div class="stat-header"><span>⚡ Energy</span><span>${Math.round(full.energy)}%</span></div>
-                <div class="stat-progress-bar"><div class="stat-fill-inner" style="width:${full.energy}%;background:var(--purple)"></div></div>
-              </div>
-              <div class="stat-box">
-                <div class="stat-header"><span>🩺 Health</span><span>${Math.round(full.health)}%</span></div>
-                <div class="stat-progress-bar"><div class="stat-fill-inner" style="width:${full.health}%;background:var(--pink)"></div></div>
-              </div>
-            </div>
-
-            <div class="actions-button-matrix">
-              <button class="action-btn" data-action="feed-pet" ${sleeping?'disabled':''}><span>🍎</span>Feed${canFeed?'':' ✓'}</button>
-              <button class="action-btn" data-action="open-pet-play" ${sleeping?'disabled':''}><span>🕹️</span>Play${canPlay?'':' ✓'}</button>
-              <button class="action-btn" data-action="sleep-pet"><span>${sleeping?'☀️':'💤'}</span>${sleeping?'Wake':'Sleep'}</button>
-              <button class="action-btn" data-action="clean-pet" ${(!full.hasMess||sleeping)?'disabled':''}><span>🧹</span>Clean${canClean?'':' ✓'}</button>
-              <button class="action-btn" data-action="heal-pet" ${!full.isSick?'disabled':''}><span>💊</span>Heal</button>
-              <button class="action-btn" data-action="pet-pet" ${sleeping?'disabled':''}><span>❤️</span>Pet</button>
-            </div>
-
-            ${moodNote}
-
-            <div class="minigame-deck">
-              <span>${escapeHtml(gameInstructions)}</span>
-              ${playMenuOpen ? `
-                <div class="minigame-menu-buttons">
-                  <button class="minigame-menu-btn" data-action="start-pet-game" data-game="timing">⏱️ Timing Game</button>
-                  <button class="minigame-menu-btn" data-action="start-pet-game" data-game="card">🔮 Guessing Star</button>
-                  <button class="minigame-menu-btn" data-action="start-pet-game" data-game="mole">🎯 Whack-a-Mole</button>
-                  <button class="minigame-menu-btn" data-action="start-pet-game" data-game="memory">🧠 Memory Match</button>
-                </div>` : ''}
-              ${timingGameOpen ? `
-                <div class="minigame-box" style="display:block;">
-                  <div class="minigame-target-zone"></div>
-                  <div class="minigame-moving-bar"></div>
-                </div>
-                <button class="btn" style="width:100%;background:var(--purple);" data-action="pet-tap-now">TAP NOW!</button>
-                <button class="icon-btn" data-action="cancel-pet-play" style="font-size:11px;margin-top:4px;">cancel</button>
-              ` : ''}
-              ${cardGameOpen ? `
-                <div class="minigame-card-row">
-                  <div class="minigame-card" data-action="pet-pick-card" data-card="0">${petUI.revealed?(petUI.starCardIndex===0?'⭐':'❌'):'❓'}</div>
-                  <div class="minigame-card" data-action="pet-pick-card" data-card="1">${petUI.revealed?(petUI.starCardIndex===1?'⭐':'❌'):'❓'}</div>
-                  <div class="minigame-card" data-action="pet-pick-card" data-card="2">${petUI.revealed?(petUI.starCardIndex===2?'⭐':'❌'):'❓'}</div>
-                </div>
-                ${!petUI.revealed ? `<button class="icon-btn" data-action="cancel-pet-play" style="font-size:11px;margin-top:4px;">cancel</button>` : ''}
-              ` : ''}
-              ${moleGameOpen ? `
-                <div class="minigame-box mole-box" style="display:block;">
-                  <div class="mole-target" style="left:${petUI.molePos.x}%;top:${petUI.molePos.y}%;" data-action="pet-whack-mole">${m.pet.species==='hell'?'😈':'🐹'}</div>
-                </div>
-                <button class="icon-btn" data-action="cancel-pet-play" style="font-size:11px;margin-top:4px;">cancel</button>
-              ` : ''}
-              ${memoryGameOpen ? `
-                <div class="memory-grid">
-                  ${petUI.memoryCards.map((sym,i)=>{
-                    const matched = petUI.memoryMatched.includes(i);
-                    const revealed = matched || petUI.memoryFlipped.includes(i);
-                    return `<div class="minigame-card memory-card ${matched?'matched':''}" data-action="pet-memory-pick" data-idx="${i}">${revealed?sym:'❓'}</div>`;
-                  }).join('')}
-                </div>
-                ${!memoryDone ? `<button class="icon-btn" data-action="cancel-pet-play" style="font-size:11px;margin-top:6px;">cancel</button>` : ''}
-              ` : ''}
-            </div>
+          <div class="pet-glance-stats">
+            <div style="font-weight:700;">${hatched ? escapeHtml(m.pet.name||'Unnamed') : 'Egg'} <span class="tag" style="margin-left:4px;">${speciesLabel}</span></div>
+            <div style="font-size:12.5px;color:var(--ink-soft);margin:3px 0 6px;">${sleeping?'Asleep 💤':pm.label}</div>
+            <div class="xp-bar-track" title="Hunger ${Math.round(full.hunger)}%"><div class="xp-bar-fill" style="width:${full.hunger}%;background:var(--orange);"></div></div>
+            <div class="xp-bar-track" style="margin-top:4px;" title="Happiness ${Math.round(full.happiness)}%"><div class="xp-bar-fill" style="width:${full.happiness}%;background:var(--blue);"></div></div>
           </div>
-        </div>`;
+        </div>
+        ${moodNote}
+        <div style="font-size:11.5px;color:var(--ink-soft);margin-top:10px;text-align:right;">Visit your pet →</div>`;
       })()}
     </div>
 
@@ -2536,7 +2597,7 @@ function renderDashboard(){
               ${escapeHtml(r.member.name)} <span class="level-badge">Lv ${lvl.level} · ${lvl.title}</span>
             </div>
             <div class="row-sub">${r.count} XP event${r.count===1?'':'s'}${tier?` · 🔥 ${tier.name} streak (×${tier.mult})`:''} · <b>${r.xp} XP</b> ${recapPeriod==='week'?'this week':'this month'}</div>
-            <div class="xp-bar-track" title="${lvl.into}/${lvl.next} XP to Level ${lvl.level+1}"><div class="xp-bar-fill" style="width:${lvl.into}%;"></div></div>
+            <div class="xp-bar-track" title="${lvl.into}/${lvl.next} XP to Level ${lvl.level+1}"><div class="xp-bar-fill" style="width:${lvl.pct}%;"></div></div>
           </div>
         </div>`;
       }).join('')}
@@ -2600,6 +2661,174 @@ function reminderNote(r){
 }
 
 /* ---------- GROCERY LIST ---------- */
+function renderPetTab(){
+  if(!currentUserId){
+    return `<div class="card"><h3>🐾 Pet</h3><div class="empty">Tap "You: choose" up top to get a pet of your own.</div></div>`;
+  }
+  const m = memberById(currentUserId);
+  if(!m){
+    return `<div class="card"><h3>🐾 Pet</h3><div class="empty">Tap "You: choose" up top to get a pet of your own.</div></div>`;
+  }
+  ensurePet(m);
+  const full = petFullStats(m); // mutates in-memory decay only, no save
+  const pm = petMoodInfo(m);    // hunger/happiness mood — drives the productivity XP penalty
+  const careCount = petCareCount(m.id);
+  maybeHatchPet(m); // locks in a random species the instant the hatch threshold is reached
+  const hatched = !!m.pet.species;
+  const speciesLabel = hatched ? SPECIES_LABELS[m.pet.species] : 'Egg';
+  const ageDays = Math.floor(hrsSince(m.pet.createdAt)/24);
+  const canFeed = canFeedToday(m), canPlay = canPlayToday(m), canClean = canCleanToday(m);
+  const sleeping = full.isSleeping;
+  const moodNote = pm.mood==='sick'
+    ? `<div class="empty risk-banner" style="background:#FBEAEA;border-radius:8px;padding:8px 10px;margin-top:12px;">😢 Hungry &amp; unhappy — all your XP is cut in half until ${escapeHtml(m.name)}'s pet is fed and played with.</div>`
+    : pm.mood==='neglected'
+    ? `<div class="empty risk-banner" style="background:#FFF1DF;border-radius:8px;padding:8px 10px;margin-top:12px;">😟 Neglected — your streak bonus is paused until your pet's taken care of.</div>`
+    : '';
+  const playMenuOpen = petUI.ownerId===m.id && petUI.menuOpen && !petUI.activeGame;
+  const timingGameOpen = petUI.ownerId===m.id && petUI.activeGame==='timing';
+  const cardGameOpen = petUI.ownerId===m.id && petUI.activeGame==='card';
+  const moleGameOpen = petUI.ownerId===m.id && petUI.activeGame==='mole';
+  const memoryGameOpen = petUI.ownerId===m.id && petUI.activeGame==='memory';
+  const memoryDone = memoryGameOpen && petUI.memoryMatched.length===petUI.memoryCards.length;
+  const gameInstructions = timingGameOpen
+    ? 'Stop the bar inside the GREEN zone — click "TAP NOW!"'
+    : cardGameOpen
+    ? `Your pet hid a ⭐ under one card — guess which!`
+    : moleGameOpen
+    ? 'Tap your pet before it ducks away!'
+    : memoryGameOpen
+    ? (memoryDone ? 'Found them all! Nice work.' : 'Flip two cards to find a matching pair.')
+    : playMenuOpen
+    ? 'Choose a game to play with your pet:'
+    : 'Click "Play" to spend time with your pet.';
+  const ledColor = full.isSick ? 'var(--danger)' : sleeping ? '#6b7a8f' : 'var(--green)';
+  const SHELL_GRADIENTS = {
+    classic: 'radial-gradient(circle at 32% 22%, #c8f5ee, #7fdfd1 55%, #4cb8a8)',
+    hero:    'radial-gradient(circle at 32% 22%, #ffeaf2, #ffc2dc 55%, #ef8fb8)',
+    angel:   'radial-gradient(circle at 32% 22%, #eef6ff, #cfe4ff 55%, #a8c8f0)',
+    hell:    'radial-gradient(circle at 32% 22%, #caa8c0, #8a5878 55%, #4a2a3d)',
+  };
+  const shellGrad = SHELL_GRADIENTS[m.pet.species] || 'radial-gradient(circle at 32% 22%, #fff3d6, #ffd984 55%, #f0b94a)';
+  const ICON_EMOJI = { feed:'🍎', play:'🕹️', sleep: sleeping?'☀️':'💤', clean:'🧹', heal:'💊', pet:'❤️' };
+  const ICON_LABEL = { feed:'FEED', play:'PLAY', sleep: sleeping?'WAKE':'SLEEP', clean:'CLEAN', heal:'HEAL', pet:'PET' };
+  const iconHtml = (key, idx)=>{
+    const disabled = petIconDisabled(m, full, key);
+    return `<div class="device-icon ${petMenuIndex===idx?'selected':''} ${disabled?'is-disabled':''}" data-action="pet-icon-select" data-idx="${idx}" title="${ICON_LABEL[key]}"><span>${ICON_EMOJI[key]}</span></div>`;
+  };
+
+  return `
+  <div class="pet-tab-page">
+    <div class="pet-device-shell" style="--shell-grad:${shellGrad};">
+      <div class="device-antenna-side"></div>
+      <div class="device-keyhole"></div>
+      <div class="device-led" style="background:${ledColor};color:${ledColor};" title="${full.isSick?'Sick':sleeping?'Asleep':'OK'}"></div>
+      <div class="device-brand-bubble">${escapeHtml(m.name.toUpperCase())}'S CHAO-PAL</div>
+
+      <div class="device-screen-ring">
+        <div class="device-icon-row top">
+          ${iconHtml('feed',0)}${iconHtml('play',1)}${iconHtml('sleep',2)}
+        </div>
+        <div class="device-screen-frame">
+        <div class="device-screen-frame-inner">
+        <div id="petViewport" class="pet-viewport pet-viewport-lg ${sleeping?'sleeping-mode':''}">
+          ${full.isSick ? `<div class="status-badge-overlay">⚠️ SICK</div>` : ''}
+          ${full.hasMess && !sleeping ? `<div class="mess-element">💩</div>` : ''}
+          ${sleeping ? `<div class="sleep-zzz">💤</div>` : ''}
+          <div class="chao-graphics-wrap chao-graphics-wrap-lg ${sleeping?'':(hatched?'chao-float':'egg-wobble')}" id="chaoPetAsset">
+            ${(()=>{
+              const art = petArtFor(m);
+              const isPixel = !hatched || PET_PIXEL_ART_SPECIES[m.pet.species];
+              return `<img src="${art}" class="${isPixel?'pixel-art':''}" alt="${escapeHtml(speciesLabel)} pet">`;
+            })()}
+          </div>
+        </div>
+        </div>
+        </div>
+        <div class="device-icon-row bottom">
+          ${iconHtml('clean',3)}${iconHtml('heal',4)}${iconHtml('pet',5)}
+        </div>
+      </div>
+
+      <div class="device-info-row">
+        <div class="device-info-badge">AGE ${ageDays}D · CARE ${careCount}${!hatched?` (${EVOS_TO_HATCH} TO HATCH)`:''}</div>
+        <div class="device-pet-name">${hatched ? escapeHtml(m.pet.name||'Unnamed') : 'Egg'} <button class="icon-btn" data-action="rename-pet" style="font-size:12px;min-width:0;min-height:0;padding:2px 5px;">✎</button></div>
+        <div class="device-species-label">${speciesLabel.toUpperCase()} · ${(sleeping?'ASLEEP':pm.label).toUpperCase()}</div>
+      </div>
+
+      <div class="stat-grid stat-grid-lg">
+        <div class="stat-box">
+          <div class="stat-header"><span>🍖 HUNGER</span><span>${Math.round(full.hunger)}%</span></div>
+          <div class="stat-progress-bar"><div class="stat-fill-inner" style="width:${full.hunger}%;background:var(--orange)"></div></div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-header"><span>🎾 HAPPY</span><span>${Math.round(full.happiness)}%</span></div>
+          <div class="stat-progress-bar"><div class="stat-fill-inner" style="width:${full.happiness}%;background:var(--blue)"></div></div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-header"><span>⚡ ENERGY</span><span>${Math.round(full.energy)}%</span></div>
+          <div class="stat-progress-bar"><div class="stat-fill-inner" style="width:${full.energy}%;background:var(--purple)"></div></div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-header"><span>🩺 HEALTH</span><span>${Math.round(full.health)}%</span></div>
+          <div class="stat-progress-bar"><div class="stat-fill-inner" style="width:${full.health}%;background:var(--pink)"></div></div>
+        </div>
+      </div>
+
+      <div class="device-action-label">▸ ${ICON_LABEL[PET_ICON_ACTIONS[petMenuIndex]]}${petIconDisabled(m, full, PET_ICON_ACTIONS[petMenuIndex])?' (n/a)':''}</div>
+      <div class="device-buttons-row">
+        <button class="tama-btn" data-action="pet-menu-left"><span>◀</span>A</button>
+        <button class="tama-btn tama-btn-select" data-action="pet-menu-confirm"><span>●</span>B</button>
+        <button class="tama-btn" data-action="pet-menu-right"><span>▶</span>C</button>
+      </div>
+
+      ${moodNote}
+
+      <div class="minigame-deck">
+        <span>${escapeHtml(gameInstructions)}</span>
+        ${playMenuOpen ? `
+          <div class="minigame-menu-buttons">
+            <button class="minigame-menu-btn" data-action="start-pet-game" data-game="timing">⏱️ Timing Game</button>
+            <button class="minigame-menu-btn" data-action="start-pet-game" data-game="card">🔮 Guessing Star</button>
+            <button class="minigame-menu-btn" data-action="start-pet-game" data-game="mole">🎯 Whack-a-Mole</button>
+            <button class="minigame-menu-btn" data-action="start-pet-game" data-game="memory">🧠 Memory Match</button>
+          </div>` : ''}
+        ${timingGameOpen ? `
+          <div class="minigame-box" style="display:block;">
+            <div class="minigame-target-zone"></div>
+            <div class="minigame-moving-bar"></div>
+          </div>
+          <button class="btn" style="width:100%;background:var(--purple);" data-action="pet-tap-now">TAP NOW!</button>
+          <button class="icon-btn" data-action="cancel-pet-play" style="font-size:11px;margin-top:4px;">cancel</button>
+        ` : ''}
+        ${cardGameOpen ? `
+          <div class="minigame-card-row">
+            <div class="minigame-card" data-action="pet-pick-card" data-card="0">${petUI.revealed?(petUI.starCardIndex===0?'⭐':'❌'):'❓'}</div>
+            <div class="minigame-card" data-action="pet-pick-card" data-card="1">${petUI.revealed?(petUI.starCardIndex===1?'⭐':'❌'):'❓'}</div>
+            <div class="minigame-card" data-action="pet-pick-card" data-card="2">${petUI.revealed?(petUI.starCardIndex===2?'⭐':'❌'):'❓'}</div>
+          </div>
+          ${!petUI.revealed ? `<button class="icon-btn" data-action="cancel-pet-play" style="font-size:11px;margin-top:4px;">cancel</button>` : ''}
+        ` : ''}
+        ${moleGameOpen ? `
+          <div class="minigame-box mole-box" style="display:block;">
+            <div class="mole-target" style="left:${petUI.molePos.x}%;top:${petUI.molePos.y}%;" data-action="pet-whack-mole">${m.pet.species==='hell'?'😈':'🐹'}</div>
+          </div>
+          <button class="icon-btn" data-action="cancel-pet-play" style="font-size:11px;margin-top:4px;">cancel</button>
+        ` : ''}
+        ${memoryGameOpen ? `
+          <div class="memory-grid">
+            ${petUI.memoryCards.map((sym,i)=>{
+              const matched = petUI.memoryMatched.includes(i);
+              const revealed = matched || petUI.memoryFlipped.includes(i);
+              return `<div class="minigame-card memory-card ${matched?'matched':''}" data-action="pet-memory-pick" data-idx="${i}">${revealed?sym:'❓'}</div>`;
+            }).join('')}
+          </div>
+          ${!memoryDone ? `<button class="icon-btn" data-action="cancel-pet-play" style="font-size:11px;margin-top:6px;">cancel</button>` : ''}
+        ` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
 function renderGrocery(){
   const items = [...state.groceryItems].sort((a,b)=> (a.done===b.done) ? b.addedAt-a.addedAt : (a.done?1:-1));
   const openCount = state.groceryItems.filter(i=>!i.done).length;
@@ -3575,18 +3804,13 @@ function attachHandlers(){
   if(openXPKeyBtn) openXPKeyBtn.onclick = ()=>openXPKeyModal();
   const openAchievementsBtn = c.querySelector('[data-action="open-achievements"]');
   if(openAchievementsBtn) openAchievementsBtn.onclick = ()=>openAchievementsModal();
-  const feedPetBtn = c.querySelector('[data-action="feed-pet"]');
-  if(feedPetBtn) feedPetBtn.onclick = ()=>{ if(currentUserId) feedPet(currentUserId); };
-  const openPlayBtn = c.querySelector('[data-action="open-pet-play"]');
-  if(openPlayBtn) openPlayBtn.onclick = ()=>{ if(currentUserId) openPetPlayMenu(currentUserId); };
-  const sleepPetBtn = c.querySelector('[data-action="sleep-pet"]');
-  if(sleepPetBtn) sleepPetBtn.onclick = ()=>{ if(currentUserId) sleepPet(currentUserId); };
-  const cleanPetBtn = c.querySelector('[data-action="clean-pet"]');
-  if(cleanPetBtn) cleanPetBtn.onclick = ()=>{ if(currentUserId) cleanPet(currentUserId); };
-  const healPetBtn = c.querySelector('[data-action="heal-pet"]');
-  if(healPetBtn) healPetBtn.onclick = ()=>{ if(currentUserId) healPet(currentUserId); };
-  const pettingBtn = c.querySelector('[data-action="pet-pet"]');
-  if(pettingBtn) pettingBtn.onclick = ()=>{ if(currentUserId) pettingPet(currentUserId); };
+  const menuLeftBtn = c.querySelector('[data-action="pet-menu-left"]');
+  if(menuLeftBtn) menuLeftBtn.onclick = ()=> petMenuMove(-1);
+  const menuRightBtn = c.querySelector('[data-action="pet-menu-right"]');
+  if(menuRightBtn) menuRightBtn.onclick = ()=> petMenuMove(1);
+  const menuConfirmBtn = c.querySelector('[data-action="pet-menu-confirm"]');
+  if(menuConfirmBtn) menuConfirmBtn.onclick = ()=> petMenuConfirm();
+  c.querySelectorAll('[data-action="pet-icon-select"]').forEach(el=> el.onclick = ()=> petMenuSelectIcon(Number(el.dataset.idx)));
   c.querySelectorAll('[data-action="start-pet-game"]').forEach(el=> el.onclick = ()=> startPetGame(el.dataset.game));
   const tapNowBtn = c.querySelector('[data-action="pet-tap-now"]');
   if(tapNowBtn) tapNowBtn.onclick = ()=> petTapNow();
@@ -3596,6 +3820,8 @@ function attachHandlers(){
   c.querySelectorAll('[data-action="pet-memory-pick"]').forEach(el=> el.onclick = ()=> petMemoryPick(Number(el.dataset.idx)));
   const cancelPlayBtn = c.querySelector('[data-action="cancel-pet-play"]');
   if(cancelPlayBtn) cancelPlayBtn.onclick = ()=> closePetPlayMenu();
+  const gotoPetBtn = c.querySelector('[data-action="goto-pet-tab"]');
+  if(gotoPetBtn) gotoPetBtn.onclick = ()=>{ activeTab = 'pet'; render(); };
   const renamePetBtn = c.querySelector('[data-action="rename-pet"]');
   if(renamePetBtn) renamePetBtn.onclick = ()=>{
     if(!currentUserId) return;
