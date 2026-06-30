@@ -539,7 +539,7 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
 .stat-grid-lg { grid-template-columns: repeat(2, 1fr); margin-top: 18px; position: relative; z-index: 2; }
 
 /* --- Simple pet card (cleaned-up layout, no full device shell) --- */
-.pet-simple-card { padding: 20px 16px 22px; }
+.pet-simple-card { padding: 20px 16px 22px; position: relative; }
 .pet-simple-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; gap: 10px; }
 .pet-simple-name { font-family: var(--pixel-font); font-size: 16px; color: var(--ink); }
 .pet-simple-meta { font-size: 11px; color: var(--ink-soft); margin-top: 3px; }
@@ -597,14 +597,81 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
 .pet-action-btn:hover:not(:disabled) { background: var(--frame); transform: translateY(-1px); box-shadow: 0 3px 0 var(--line); }
 .pet-action-btn:active:not(:disabled) { transform: translateY(1px); box-shadow: none; }
 .pet-action-btn--off { opacity: .5; cursor: not-allowed; }
-.pet-action-btn--primary { background: linear-gradient(165deg, #fff, var(--purple-light, #e9defc)); border-color: var(--purple); box-shadow: 0 2px 0 var(--purple); }
-.pet-action-btn--primary:hover { background: linear-gradient(165deg, #fff, #ddcdfb); }
+.pet-action-btn--primary { background: linear-gradient(165deg, #fff, color-mix(in srgb, var(--pet-accent, var(--purple)) 22%, white)); border-color: var(--pet-accent, var(--purple)); box-shadow: 0 2px 0 var(--pet-accent, var(--purple)); }
+.pet-action-btn--primary:hover { background: linear-gradient(165deg, #fff, color-mix(in srgb, var(--pet-accent, var(--purple)) 35%, white)); }
 .pet-action-icon { font-size: 22px; line-height: 1; }
 .pet-action-label { font-family: var(--pixel-font); font-size: 9px; color: var(--ink-soft); }
-.pet-action-btn--primary .pet-action-label { color: var(--purple); }
+.pet-action-btn--primary .pet-action-label { color: var(--pet-accent, var(--purple)); }
 .pet-action-reason { font-size: 8px; color: var(--ink-soft); opacity: .8; margin-top: -1px; }
 
-.minigame-deck--active { background: rgba(155, 120, 255, .08); border-color: var(--purple); }
+.minigame-deck--active { background: color-mix(in srgb, var(--pet-accent, var(--purple)) 8%, transparent); border-color: var(--pet-accent, var(--purple)); }
+
+/* --- toast feedback after an action --- */
+.pet-toast {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+  background: var(--ink); color: #fff; font-size: 12px; font-family: var(--pixel-font);
+  padding: 7px 14px; border-radius: 999px; z-index: 5; white-space: nowrap;
+  animation: petToastPop .2s ease, petToastFade .3s ease 1.9s forwards;
+  box-shadow: 0 4px 10px rgba(0,0,0,.2);
+}
+@keyframes petToastPop { from { transform: translateX(-50%) translateY(-6px); opacity:0; } to { transform: translateX(-50%) translateY(0); opacity:1; } }
+@keyframes petToastFade { to { opacity: 0; } }
+
+/* --- hatch-day celebration modal --- */
+.hatch-reveal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 50;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.hatch-reveal-card {
+  background: #fff; border-radius: 18px; padding: 28px 24px; text-align: center;
+  max-width: 320px; box-shadow: 0 12px 30px rgba(0,0,0,.3);
+}
+.hatch-reveal-emoji { font-size: 40px; }
+.hatch-reveal-title { font-family: var(--pixel-font); font-size: 16px; margin: 8px 0 4px; color: var(--ink); }
+.hatch-reveal-species { font-size: 13px; color: var(--ink-soft); margin-bottom: 16px; }
+
+/* --- streak badge & welcome banner --- */
+.pet-streak-badge {
+  display: inline-block; margin-top: 6px; font-size: 10px; font-family: var(--pixel-font);
+  background: #fff1df; color: #a35b00; padding: 3px 8px; border-radius: 999px;
+}
+.pet-welcome-banner {
+  background: color-mix(in srgb, var(--pet-accent, var(--purple)) 10%, white);
+  border: 1px solid color-mix(in srgb, var(--pet-accent, var(--purple)) 30%, white);
+  border-radius: 10px; padding: 9px 12px; font-size: 12px; color: var(--ink-soft); margin-bottom: 12px;
+}
+
+/* --- history strip --- */
+.pet-history-strip {
+  margin-top: 16px; font-size: 10px; color: var(--ink-soft); line-height: 1.8;
+  white-space: nowrap; overflow-x: auto; padding-bottom: 2px;
+}
+.pet-history-item { white-space: nowrap; }
+.pet-history-dot { margin: 0 6px; opacity: .5; }
+
+/* --- accent color picker --- */
+.pet-color-row { display: flex; gap: 8px; margin-top: 14px; align-items: center; }
+.pet-color-swatch {
+  width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;
+  transition: transform .12s ease;
+}
+.pet-color-swatch.selected { border-color: var(--ink); transform: scale(1.15); }
+.pet-color-swatch:hover { transform: scale(1.1); }
+
+/* --- housemates' pets (read-only) --- */
+.housemates-pets-label { font-family: var(--pixel-font); font-size: 10px; color: var(--ink-soft); margin: 14px 0 8px; }
+.housemates-pets-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.housemate-pet-card { flex: none; width: 64px; text-align: center; }
+.housemate-pet-thumb {
+  width: 56px; height: 56px; border-radius: 12px; background: var(--board-bg2);
+  display: flex; align-items: center; justify-content: center; position: relative;
+  border: 2px solid var(--line); overflow: hidden;
+}
+.housemate-pet-thumb img { width: 80%; height: 80%; object-fit: contain; }
+.housemate-pet-thumb.is-sick { border-color: var(--danger); }
+.housemate-pet-thumb.is-asleep { opacity: .55; }
+.housemate-pet-name { font-size: 9px; color: var(--ink); margin-top: 4px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.housemate-pet-owner { font-size: 8px; color: var(--ink-soft); }
 
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -1785,6 +1852,8 @@ function ensurePet(member){
       isSleeping: false, sleepToggledAt: now,
       energy: 80, energyUpdatedAt: now,
       health: 100, healthUpdatedAt: now,
+      log: [], streak: 0, streakDate: null,
+      color: '#9b78ff',
     };
     return;
   }
@@ -1800,7 +1869,43 @@ function ensurePet(member){
   if(typeof p.health !== 'number') p.health = 100;
   if(typeof p.healthUpdatedAt !== 'number') p.healthUpdatedAt = now;
   if(typeof p.species === 'undefined') p.species = null;
+  if(!Array.isArray(p.log)) p.log = [];
+  if(typeof p.streak !== 'number') p.streak = 0;
+  if(typeof p.streakDate === 'undefined') p.streakDate = null;
+  if(!p.color) p.color = '#9b78ff';
   maybeHatchPet(member); // catches pets that already had enough care logged before this update existed
+}
+const PET_ACTION_VERBS = {
+  feed: 'Fed', play: 'Played with', sleep: 'Put to sleep', wake: 'Woke up',
+  clean: 'Cleaned up after', heal: 'Healed', pet: 'Petted',
+};
+// Appends a short human-readable history entry (kept to the most recent 6)
+// so housemates can see at a glance what's been done for the pet lately.
+function logPetAction(member, action){
+  ensurePet(member);
+  member.pet.log = member.pet.log || [];
+  member.pet.log.unshift({ action, at: Date.now() });
+  member.pet.log = member.pet.log.slice(0, 6);
+}
+// Care-streak: counts consecutive calendar days on which at least one care
+// action (feed/play/clean/pet) happened. Bridges nothing — a missed day resets it.
+function recordCareDay(member){
+  ensurePet(member);
+  const p = member.pet;
+  const today = new Date().toDateString();
+  if(p.streakDate === today) return; // already credited today
+  const yesterday = new Date(Date.now() - 86400000).toDateString();
+  p.streak = (p.streakDate === yesterday) ? (p.streak||0) + 1 : 1;
+  p.streakDate = today;
+}
+function timeAgoShort(ts){
+  const mins = Math.floor((Date.now()-ts)/60000);
+  if(mins < 1) return 'just now';
+  if(mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins/60);
+  if(hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs/24);
+  return days===1 ? 'yesterday' : `${days}d ago`;
 }
 function isSameCalendarDay(t1,t2){ return new Date(t1).toDateString() === new Date(t2).toDateString(); }
 
@@ -1881,6 +1986,27 @@ function canPlayToday(member){ ensurePet(member); return !isSameCalendarDay(memb
 function canCleanToday(member){ ensurePet(member); return !isSameCalendarDay(member.pet.lastCleaned, Date.now()); }
 function isPetHatched(memberId){ return petCareCount(memberId) >= EVOS_TO_HATCH; }
 
+// Call after any care action that might push careCount over the hatch threshold.
+// Detects the egg->species transition and queues a one-time celebratory toast.
+function checkHatchReveal(member){
+  const wasHatched = !!member.pet.species;
+  maybeHatchPet(member);
+  if(!wasHatched && member.pet.species){
+    petUI.hatchRevealFor = member.id;
+    petUI.hatchRevealSpecies = member.pet.species;
+  }
+}
+// Lightweight ephemeral toast shown in the pet card after an action (e.g. "+Fed!").
+// Auto-clears itself after ~2.2s via a follow-up render.
+function showPetToast(text){
+  petUI.toastText = text;
+  petUI.toastId = (petUI.toastId||0) + 1;
+  const myToastId = petUI.toastId;
+  setTimeout(()=>{
+    if(petUI.toastId===myToastId){ petUI.toastText = null; render(); }
+  }, 2200);
+}
+
 // Feeding always resets hunger (so the pet always responds to care), but the
 // XP/evolution reward is capped once per day to keep the chore economy fair.
 function feedPet(memberId){
@@ -1889,6 +2015,10 @@ function feedPet(memberId){
   const rewarded = canFeedToday(m);
   m.pet.lastFed = Date.now();
   if(rewarded) logXP(memberId, 'pet_feed', 'Fed pet', XP.petFeed);
+  logPetAction(m, 'feed');
+  recordCareDay(m);
+  checkHatchReveal(m);
+  showPetToast('🍎 Fed! Hunger restored.');
   saveState(); render();
 }
 // "Play" opens the mini-game menu (pure UI state, no save needed) —
@@ -1948,6 +2078,8 @@ function resetPetUI(){
     starCardIndex: 0, revealed: false,
     molePos: null,
     memoryCards: [], memoryFlipped: [], memoryMatched: [], memoryLocked: false,
+    toastText: null, toastId: 0,
+    hatchRevealFor: null, hatchRevealSpecies: null,
   };
 }
 let petUI = resetPetUI();
@@ -2056,7 +2188,11 @@ function resolvePetMinigame(memberId, success){
     m.pet.energy = clampPct(m.pet.energy - 12);
   }
   if(rewarded) logXP(memberId, 'pet_play', 'Played with pet', XP.petPlay);
-  petUI = resetPetUI();
+  logPetAction(m, 'play');
+  recordCareDay(m);
+  petUI = resetPetUI(); // clears game state — do this before setting post-action flags below
+  checkHatchReveal(m);
+  showPetToast(success ? '🎾 Great game! Happiness up.' : '🎾 Good try — played anyway.');
   saveState(); render();
 }
 // A quick affectionate pat — small, frequent happiness top-up, no XP (so it
@@ -2067,6 +2203,9 @@ function pettingPet(memberId){
   if(m.pet && m.pet.isSleeping) return;
   ensurePet(m); tickPet(m);
   m.pet.lastHappy = Date.now();
+  logPetAction(m, 'pet');
+  recordCareDay(m);
+  showPetToast('❤️ Aww, happiness up a little.');
   saveState(); render();
 }
 function sleepPet(memberId){
@@ -2074,6 +2213,7 @@ function sleepPet(memberId){
   ensurePet(m); tickPet(m); // settle energy at current state before flipping the clock
   m.pet.isSleeping = !m.pet.isSleeping;
   m.pet.sleepToggledAt = Date.now();
+  logPetAction(m, m.pet.isSleeping ? 'sleep' : 'wake');
   saveState(); render();
 }
 function cleanPet(memberId){
@@ -2084,6 +2224,10 @@ function cleanPet(memberId){
   m.pet.lastCleaned = Date.now();
   m.pet.lastHappy = Date.now();
   if(rewarded) logXP(memberId, 'pet_clean', 'Cleaned up after pet', XP.petClean);
+  logPetAction(m, 'clean');
+  recordCareDay(m);
+  checkHatchReveal(m);
+  showPetToast('🧹 All clean!');
   saveState(); render();
 }
 function healPet(memberId){
@@ -2092,6 +2236,14 @@ function healPet(memberId){
   if(m.pet.health >= 40) return; // only needed once actually sick
   m.pet.health = 100;
   m.pet.healthUpdatedAt = Date.now();
+  logPetAction(m, 'heal');
+  showPetToast('💊 Feeling better!');
+  saveState(); render();
+}
+function setPetColor(memberId, color){
+  const m = memberById(memberId); if(!m) return;
+  ensurePet(m);
+  m.pet.color = color;
   saveState(); render();
 }
 function shadeColor(hex, percent){
@@ -2806,9 +2958,68 @@ function renderPetTab(){
       ${Array.from({length:EVOS_TO_HATCH}).map((_,i)=> `<span class="hatch-pip ${i<careCount?'filled':''}"></span>`).join('')}
     </div>` : '';
 
+  const isNewPet = ageDays===0 && careCount===0;
+  const welcomeBanner = isNewPet ? `
+    <div class="pet-welcome-banner">👋 Say hello to your new egg! Feed, play, clean, and pet it to help it hatch — every bit of care counts.</div>
+  ` : '';
+
+  const accent = m.pet.color || '#9b78ff';
+  const PET_COLORS = ['#9b78ff','#ff8fb8','#5fb8e8','#6bcf8f','#ffb866','#ff7a7a'];
+  const colorPicker = `
+    <div class="pet-color-row" title="Pick an accent color for your pet card">
+      ${PET_COLORS.map(c=> `<span class="pet-color-swatch ${c===accent?'selected':''}" style="background:${c}" data-action="set-pet-color" data-color="${c}"></span>`).join('')}
+    </div>`;
+
+  const streakBadge = (m.pet.streak||0) > 1 ? `<div class="pet-streak-badge">🔥 ${m.pet.streak}-day care streak</div>` : '';
+
+  const historyStrip = (m.pet.log && m.pet.log.length) ? `
+    <div class="pet-history-strip">
+      ${m.pet.log.map(e=> `<span class="pet-history-item">${escapeHtml(PET_ACTION_VERBS[e.action]||e.action)} · ${timeAgoShort(e.at)}</span>`).join('<span class="pet-history-dot">•</span>')}
+    </div>` : '';
+
+  // Read-only glimpse of every other housemate's pet, so the whole house stays
+  // engaged with each other's pets without being able to act on them directly.
+  const others = state.members.filter(x=> x.id!==m.id && !x.hidden);
+  const housemixPets = others.length ? `
+    <div class="pet-section-divider"></div>
+    <div class="housemates-pets-label">🏠 Housemates' pets</div>
+    <div class="housemates-pets-row">
+      ${others.map(om=>{
+        ensurePet(om);
+        const oFull = petFullStats(om);
+        const oHatched = !!om.pet.species;
+        const oLabel = oHatched ? SPECIES_LABELS[om.pet.species] : 'Egg';
+        const oArt = petArtFor(om);
+        const oIsPixel = !oHatched || PET_PIXEL_ART_SPECIES[om.pet.species];
+        const oStatus = oFull.isSick ? 'is-sick' : oFull.isSleeping ? 'is-asleep' : 'is-ok';
+        return `<div class="housemate-pet-card">
+          <div class="housemate-pet-thumb ${oStatus}">
+            <img src="${oArt}" class="${oIsPixel?'pixel-art':''}" alt="${escapeHtml(oLabel)}">
+          </div>
+          <div class="housemate-pet-name">${escapeHtml(om.pet.name || om.name+"'s "+oLabel)}</div>
+          <div class="housemate-pet-owner">${escapeHtml(om.name)}</div>
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
+  const toastHtml = petUI.toastText ? `<div class="pet-toast">${escapeHtml(petUI.toastText)}</div>` : '';
+
+  const hatchModal = (petUI.hatchRevealFor===m.id && petUI.hatchRevealSpecies) ? `
+    <div class="hatch-reveal-overlay" data-action="dismiss-hatch-reveal">
+      <div class="hatch-reveal-card">
+        <div class="hatch-reveal-emoji">🎉</div>
+        <div class="hatch-reveal-title">It hatched!</div>
+        <div class="hatch-reveal-species">Say hello to your ${escapeHtml(SPECIES_LABELS[petUI.hatchRevealSpecies])}!</div>
+        <button class="btn" data-action="dismiss-hatch-reveal">Yay!</button>
+      </div>
+    </div>` : '';
+
   return `
-  <div class="card pet-simple-card">
+  <div class="card pet-simple-card" style="--pet-accent:${accent};">
+    ${toastHtml}
+    ${hatchModal}
     ${moodNote}
+    ${welcomeBanner}
 
     <div class="pet-simple-header">
       <div>
@@ -2817,6 +3028,7 @@ function renderPetTab(){
         </div>
         <div class="pet-simple-meta">${speciesLabel} · Age ${ageDays}d${hatched?'':''}</div>
         ${hatchPips}
+        ${streakBadge}
       </div>
       <div class="pet-status-chip ${statusClass}"><span class="pet-status-dot"></span>${statusLabel}</div>
     </div>
@@ -2908,6 +3120,10 @@ function renderPetTab(){
         ${!memoryDone ? `<button class="icon-btn" data-action="cancel-pet-play" style="font-size:11px;margin-top:6px;">cancel</button>` : ''}
       ` : ''}
     </div>
+
+    ${historyStrip}
+    ${colorPicker}
+    ${housemixPets}
   </div>`;
 }
 
@@ -3901,6 +4117,10 @@ function attachHandlers(){
     else if(key==='clean') cleanPet(currentUserId);
     else if(key==='heal') healPet(currentUserId);
     else if(key==='pet') pettingPet(currentUserId);
+  });
+  c.querySelectorAll('[data-action="set-pet-color"]').forEach(el=> el.onclick = ()=> setPetColor(currentUserId, el.dataset.color));
+  c.querySelectorAll('[data-action="dismiss-hatch-reveal"]').forEach(el=> el.onclick = ()=>{
+    petUI.hatchRevealFor = null; petUI.hatchRevealSpecies = null; render();
   });
   c.querySelectorAll('[data-action="start-pet-game"]').forEach(el=> el.onclick = ()=> startPetGame(el.dataset.game));
   const tapNowBtn = c.querySelector('[data-action="pet-tap-now"]');
