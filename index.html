@@ -538,31 +538,73 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
 .pet-device-shell .minigame-menu-btn:hover { background: linear-gradient(165deg,#fff,#ffc4dd); }
 .stat-grid-lg { grid-template-columns: repeat(2, 1fr); margin-top: 18px; position: relative; z-index: 2; }
 
-/* --- Simple pet card (no device shell) --- */
+/* --- Simple pet card (cleaned-up layout, no full device shell) --- */
 .pet-simple-card { padding: 20px 16px 22px; }
-.pet-simple-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+.pet-simple-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; gap: 10px; }
 .pet-simple-name { font-family: var(--pixel-font); font-size: 16px; color: var(--ink); }
 .pet-simple-meta { font-size: 11px; color: var(--ink-soft); margin-top: 3px; }
-.pet-simple-led { width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; box-shadow: 0 0 6px currentColor; flex: none; }
+
+.pet-status-chip {
+  display: flex; align-items: center; gap: 6px; font-family: var(--pixel-font); font-size: 9px;
+  padding: 6px 10px; border-radius: 999px; flex: none; white-space: nowrap;
+  background: var(--board-bg2); border: 1px solid var(--line); color: var(--ink-soft);
+}
+.pet-status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 5px var(--green); }
+.pet-status-chip.is-sick { color: var(--danger); border-color: var(--danger); }
+.pet-status-chip.is-sick .pet-status-dot { background: var(--danger); box-shadow: 0 0 5px var(--danger); }
+.pet-status-chip.is-asleep { color: #6b7a8f; border-color: #b9c3cf; }
+.pet-status-chip.is-asleep .pet-status-dot { background: #6b7a8f; box-shadow: none; }
+
+.hatch-pips { display: flex; gap: 4px; margin-top: 6px; }
+.hatch-pip { width: 8px; height: 8px; border-radius: 50%; background: var(--board-bg2); border: 1px solid var(--line); }
+.hatch-pip.filled { background: var(--gold); border-color: var(--gold); }
+
+/* Game Boy-style frame around the pet stage */
+.gb-frame {
+  background: linear-gradient(170deg, #e4e0ea, #cfc9d8 65%, #bdb6c8);
+  border-radius: 22px 22px 14px 14px; padding: 14px 14px 10px;
+  box-shadow: 0 4px 0 rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.5);
+  margin-bottom: 4px;
+}
+.gb-frame-top { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 8px; }
+.gb-frame-label { font-family: var(--pixel-font); font-size: 8px; color: #6b6378; letter-spacing: .03em; }
+.gb-frame-led { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 5px var(--green); }
+.gb-frame-led.is-sick { background: var(--danger); box-shadow: 0 0 5px var(--danger); }
+.gb-frame-led.is-asleep { background: #8a93a3; box-shadow: none; }
 .pet-simple-stage {
   position: relative; display: flex; align-items: center; justify-content: center;
-  min-height: 160px; background: var(--board-bg2); border-radius: 14px;
-  margin-bottom: 16px; overflow: hidden;
+  min-height: 150px; background: radial-gradient(circle at 50% 35%, #eef7e3, #cfe6a6 75%);
+  border-radius: 8px; overflow: hidden;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,.18), inset 0 0 0 3px #8a9a6e;
 }
+.pet-simple-stage.sleeping-mode { background: radial-gradient(circle at 50% 35%, #d8dde6, #aab2c2 75%); }
+.gb-frame-bottom { display: flex; align-items: center; justify-content: space-between; padding: 10px 6px 2px; }
+.gb-dpad { font-size: 13px; color: #8a83948 ; color: #8a8394; }
+.gb-frame-mood { font-family: var(--pixel-font); font-size: 8px; color: #6b6378; }
+.gb-ab { font-size: 9px; letter-spacing: 2px; color: #a89fb5; }
+
+.pet-section-divider { height: 1px; background: var(--line); opacity: .5; margin: 18px 0 2px; }
+
 .pet-action-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px;
 }
 .pet-action-btn {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 5px; padding: 12px 8px; border-radius: 14px; border: 2px solid var(--line);
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; padding: 12px 8px; border-radius: 14px; border: 2px solid var(--line);
   background: var(--card); cursor: pointer; transition: all .12s ease;
   box-shadow: 0 2px 0 var(--line);
 }
 .pet-action-btn:hover:not(:disabled) { background: var(--frame); transform: translateY(-1px); box-shadow: 0 3px 0 var(--line); }
 .pet-action-btn:active:not(:disabled) { transform: translateY(1px); box-shadow: none; }
-.pet-action-btn--off { opacity: .4; cursor: not-allowed; }
+.pet-action-btn--off { opacity: .5; cursor: not-allowed; }
+.pet-action-btn--primary { background: linear-gradient(165deg, #fff, var(--purple-light, #e9defc)); border-color: var(--purple); box-shadow: 0 2px 0 var(--purple); }
+.pet-action-btn--primary:hover { background: linear-gradient(165deg, #fff, #ddcdfb); }
 .pet-action-icon { font-size: 22px; line-height: 1; }
 .pet-action-label { font-family: var(--pixel-font); font-size: 9px; color: var(--ink-soft); }
+.pet-action-btn--primary .pet-action-label { color: var(--purple); }
+.pet-action-reason { font-size: 8px; color: var(--ink-soft); opacity: .8; margin-top: -1px; }
+
+.minigame-deck--active { background: rgba(155, 120, 255, .08); border-color: var(--purple); }
 
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -1869,6 +1911,13 @@ function petIconDisabled(m, full, key){
   if(key==='pet') return sleeping;
   return false;
 }
+function petIconDisabledReason(m, full, key){
+  const sleeping = full.isSleeping;
+  if(sleeping && (key==='feed'||key==='play'||key==='clean'||key==='pet')) return 'Asleep';
+  if(key==='clean' && !full.hasMess) return 'All clean';
+  if(key==='heal' && !full.isSick) return 'Healthy';
+  return '';
+}
 function petMenuMove(dir){
   petMenuIndex = (petMenuIndex + dir + PET_ICON_ACTIONS.length) % PET_ICON_ACTIONS.length;
   render();
@@ -2738,33 +2787,57 @@ function renderPetTab(){
   const ICON_LABEL = { feed:'Feed', play:'Play', sleep: sleeping?'Wake':'Sleep', clean:'Clean', heal:'Heal', pet:'Pet' };
   const actionBtn = (key)=>{
     const disabled = petIconDisabled(m, full, key);
-    return `<button class="pet-action-btn ${disabled?'pet-action-btn--off':''}" data-action="pet-direct-action" data-key="${key}" ${disabled?'disabled':''}>
+    const reason = disabled ? petIconDisabledReason(m, full, key) : '';
+    const isPrimary = key==='play' && !disabled;
+    return `<button class="pet-action-btn ${disabled?'pet-action-btn--off':''} ${isPrimary?'pet-action-btn--primary':''}" data-action="pet-direct-action" data-key="${key}" ${disabled?'disabled':''}>
       <span class="pet-action-icon">${ICON_EMOJI[key]}</span>
       <span class="pet-action-label">${ICON_LABEL[key]}</span>
+      ${reason ? `<span class="pet-action-reason">${reason}</span>` : ''}
     </button>`;
   };
 
   const art = petArtFor(m);
   const isPixel = !hatched || PET_PIXEL_ART_SPECIES[m.pet.species];
+  const statusLabel = full.isSick ? 'Sick' : sleeping ? 'Asleep' : 'OK';
+  const statusClass = full.isSick ? 'is-sick' : sleeping ? 'is-asleep' : 'is-ok';
+
+  const hatchPips = !hatched ? `
+    <div class="hatch-pips" title="${careCount}/${EVOS_TO_HATCH} care actions to hatch">
+      ${Array.from({length:EVOS_TO_HATCH}).map((_,i)=> `<span class="hatch-pip ${i<careCount?'filled':''}"></span>`).join('')}
+    </div>` : '';
 
   return `
   <div class="card pet-simple-card">
+    ${moodNote}
+
     <div class="pet-simple-header">
       <div>
         <div class="pet-simple-name">${hatched ? escapeHtml(m.pet.name||'Unnamed') : 'Egg'}
           <button class="icon-btn" data-action="rename-pet" style="font-size:12px;min-width:0;min-height:0;padding:2px 5px;">✎</button>
         </div>
-        <div class="pet-simple-meta">${speciesLabel} · Age ${ageDays}d · ${sleeping?'Asleep':pm.label} · Care ${careCount}${!hatched?` (${EVOS_TO_HATCH} to hatch)`:''}</div>
+        <div class="pet-simple-meta">${speciesLabel} · Age ${ageDays}d${hatched?'':''}</div>
+        ${hatchPips}
       </div>
-      <div class="pet-simple-led" style="background:${ledColor};" title="${full.isSick?'Sick':sleeping?'Asleep':'OK'}"></div>
+      <div class="pet-status-chip ${statusClass}"><span class="pet-status-dot"></span>${statusLabel}</div>
     </div>
 
-    <div class="pet-simple-stage ${sleeping?'sleeping-mode':''}">
-      ${full.isSick ? `<div class="status-badge-overlay">⚠️ SICK</div>` : ''}
-      ${full.hasMess && !sleeping ? `<div class="mess-element">💩</div>` : ''}
-      ${sleeping ? `<div class="sleep-zzz">💤</div>` : ''}
-      <div class="chao-graphics-wrap chao-graphics-wrap-lg ${sleeping?'':(hatched?'chao-float':'egg-wobble')}" id="chaoPetAsset">
-        <img src="${art}" class="${isPixel?'pixel-art':''}" alt="${escapeHtml(speciesLabel)} pet">
+    <div class="gb-frame">
+      <div class="gb-frame-top">
+        <span class="gb-frame-label">${escapeHtml(m.name.toUpperCase())}'S PET</span>
+        <span class="gb-frame-led ${statusClass}"></span>
+      </div>
+      <div class="pet-simple-stage ${sleeping?'sleeping-mode':''}">
+        ${full.isSick ? `<div class="status-badge-overlay">⚠️ SICK</div>` : ''}
+        ${full.hasMess && !sleeping ? `<div class="mess-element">💩</div>` : ''}
+        ${sleeping ? `<div class="sleep-zzz">💤</div>` : ''}
+        <div class="chao-graphics-wrap chao-graphics-wrap-lg ${sleeping?'':(hatched?'chao-float':'egg-wobble')}" id="chaoPetAsset">
+          <img src="${art}" class="${isPixel?'pixel-art':''}" alt="${escapeHtml(speciesLabel)} pet">
+        </div>
+      </div>
+      <div class="gb-frame-bottom">
+        <span class="gb-dpad">✛</span>
+        <span class="gb-frame-mood">${(sleeping?'ASLEEP':pm.label).toUpperCase()}</span>
+        <span class="gb-ab">●●</span>
       </div>
     </div>
 
@@ -2787,13 +2860,13 @@ function renderPetTab(){
       </div>
     </div>
 
+    <div class="pet-section-divider"></div>
+
     <div class="pet-action-grid">
       ${actionBtn('feed')}${actionBtn('play')}${actionBtn('sleep')}${actionBtn('clean')}${actionBtn('heal')}${actionBtn('pet')}
     </div>
 
-    ${moodNote}
-
-    <div class="minigame-deck">
+    <div class="minigame-deck ${(playMenuOpen||timingGameOpen||cardGameOpen||moleGameOpen||memoryGameOpen)?'minigame-deck--active':''}">
       <span>${escapeHtml(gameInstructions)}</span>
       ${playMenuOpen ? `
         <div class="minigame-menu-buttons">
@@ -3824,10 +3897,10 @@ function attachHandlers(){
     const key = el.dataset.key;
     if(key==='feed') feedPet(currentUserId);
     else if(key==='play') openPetPlayMenu(currentUserId);
-    else if(key==='sleep') togglePetSleep(currentUserId);
+    else if(key==='sleep') sleepPet(currentUserId);
     else if(key==='clean') cleanPet(currentUserId);
     else if(key==='heal') healPet(currentUserId);
-    else if(key==='pet') petThePet(currentUserId);
+    else if(key==='pet') pettingPet(currentUserId);
   });
   c.querySelectorAll('[data-action="start-pet-game"]').forEach(el=> el.onclick = ()=> startPetGame(el.dataset.game));
   const tapNowBtn = c.querySelector('[data-action="pet-tap-now"]');
