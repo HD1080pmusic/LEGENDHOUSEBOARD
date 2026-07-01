@@ -1041,6 +1041,7 @@ function restoreHouseData(){
   saveState();
   render();
 }
+window.restoreHouseData = restoreHouseData;
 async function init(){
   selectedCalDate = todayStr();
   await loadState();
