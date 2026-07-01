@@ -715,7 +715,7 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
     Tap below to restore everyone back to their last known levels, pets, and chores.
     <br><br>
     <button onclick="restoreHouseData()" style="background:#f0ad4e;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-weight:700;font-size:13px;cursor:pointer;">🔄 Restore House Data</button>
-    <small style="display:block;margin-top:8px;color:#a07020;">This restores: Kaitlin Lv 2 (pink Classic Chao), Jimmy Lv 2 (Hell Chao), Ryan Lv 1 half, HD Lv 3 (Angel Chao), Shayla Lv 0, henry Lv 1 half, Christi Lv 1 ⅔ (Classic Chao) + all 4 chores.</small>
+    <small style="display:block;margin-top:8px;color:#a07020;">This restores: Kaitlin Lv 2 (Hero Chao / Kuromi), Jimmy Lv 2 (Hell Chao), Ryan Lv 1 half, HD Lv 3 (Angel Chao), Shayla Lv 0, henry Lv 1 half, Christi Lv 1 ⅔ (Classic Chao) + all 4 chores.</small>
   </div>
 </div>
 
@@ -814,7 +814,7 @@ async function saveState(){
 }
 async function checkAndRestoreIfNeeded(){
   if(state.members.length < 7 && !sessionStorage.getItem('restoreDeclined')){
-    const ok = confirm('⚠️ Your house data looks incomplete (' + state.members.length + ' of 7 members found).\n\nRestore everyone to their last known levels, pets and chores?\n\n• Kaitlin Lv 2 (Classic Chao / Kuromi)\n• Jimmy Lv 2 (Hell Chao / Piccolo)\n• Ryan Lv 1 half (egg / Zoro)\n• HD Lv 3 (Angel Chao / Totoro)\n• Shayla Lv 0 (egg / Hello Kitty)\n• henry Lv 1 half (egg)\n• Christi Lv 1 ⅔ (Classic Chao / Cinnamoroll)');
+    const ok = confirm('⚠️ Your house data looks incomplete (' + state.members.length + ' of 7 members found).\n\nRestore everyone to their last known levels, pets and chores?\n\n• Kaitlin Lv 2 (Hero Chao / Kuromi)\n• Jimmy Lv 2 (Hell Chao / Piccolo)\n• Ryan Lv 1 half (egg / Zoro)\n• HD Lv 3 (Angel Chao / Totoro)\n• Shayla Lv 0 (egg / Hello Kitty)\n• henry Lv 1 half (egg)\n• Christi Lv 1 ⅔ (Classic Chao / Cinnamoroll)');
     if(ok){
       syncPaused = true;
       Object.assign(state, JSON.parse(JSON.stringify(RESTORED_STATE)));
@@ -990,7 +990,7 @@ function importGoogleEvents(items, importedByMemberId){
 const RESTORED_STATE = {
   members: [
     { id:'kaitr001', name:'Kaitlin', color:'#D63384', avatarData:null, mascotGif:'Kuromi GIF.gif', hidden:false, lastSeenLevel:2,
-      pet:{ name:null, createdAt:1782014400000, species:'classic', lastFed:1782532800000, lastHappy:1782446400000, lastPlayed:1782446400000, lastCleaned:1782360000000, isSleeping:false, sleepToggledAt:1782014400000, energy:80, energyUpdatedAt:1782532800000, health:100, healthUpdatedAt:1782532800000, log:[], streak:0, streakDate:null, color:'#ff8fb8' } },
+      pet:{ name:null, createdAt:1782014400000, species:'hero', lastFed:1782532800000, lastHappy:1782446400000, lastPlayed:1782446400000, lastCleaned:1782360000000, isSleeping:false, sleepToggledAt:1782014400000, energy:80, energyUpdatedAt:1782532800000, health:100, healthUpdatedAt:1782532800000, log:[], streak:0, streakDate:null, color:'#ff8fb8' } },
     { id:'jimmyr01', name:'Jimmy',   color:'#8B0000', avatarData:null, mascotGif:'Piccolo GIF.gif', hidden:false, lastSeenLevel:2,
       pet:{ name:null, createdAt:1782014400000, species:'hell',    lastFed:1782532800000, lastHappy:1782446400000, lastPlayed:1782446400000, lastCleaned:1782360000000, isSleeping:false, sleepToggledAt:1782014400000, energy:80, energyUpdatedAt:1782532800000, health:100, healthUpdatedAt:1782532800000, log:[], streak:0, streakDate:null, color:'#ff7a7a' } },
     { id:'ryanr001', name:'Ryan',    color:'#228B22', avatarData:null, mascotGif:'Zoro GIF.gif',   hidden:false, lastSeenLevel:1,
