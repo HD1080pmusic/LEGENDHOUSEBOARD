@@ -606,6 +606,28 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
 
 .minigame-deck--active { background: color-mix(in srgb, var(--pet-accent, var(--purple)) 8%, transparent); border-color: var(--pet-accent, var(--purple)); }
 
+/* ── Dev Panel ── */
+#devPanel { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.55); display:none; align-items:flex-start; justify-content:center; padding:20px; overflow-y:auto; }
+#devPanelContent { background:#fff; border-radius:18px; width:100%; max-width:420px; padding:0 0 24px; box-shadow:0 16px 40px rgba(0,0,0,.35); }
+.dev-header { display:flex; align-items:center; justify-content:space-between; padding:16px 18px 12px; border-bottom:1px solid #eee; font-family:var(--pixel-font); font-size:13px; color:#222; }
+.dev-close { background:none; border:none; font-size:18px; cursor:pointer; color:#999; line-height:1; padding:0; }
+.dev-section { padding:14px 18px 0; }
+.dev-section-title { font-family:var(--pixel-font); font-size:10px; color:#888; margin-bottom:10px; letter-spacing:.04em; }
+.dev-label { display:block; font-size:11px; color:#666; margin:8px 0 4px; }
+.dev-select { width:100%; padding:7px 10px; border:1.5px solid #ddd; border-radius:8px; font-size:13px; background:#fafafa; }
+.dev-input { padding:7px 8px; border:1.5px solid #ddd; border-radius:8px; font-size:13px; background:#fafafa; width:100%; box-sizing:border-box; }
+.dev-row { display:flex; gap:8px; flex-wrap:wrap; align-items:flex-start; }
+.dev-grid4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:6px; margin-bottom:8px; }
+.dev-stat-label { display:block; font-size:9px; color:#999; margin-bottom:3px; }
+.dev-btn { padding:8px 12px; border-radius:8px; border:1.5px solid #ddd; background:#f5f5f5; font-size:12px; cursor:pointer; white-space:nowrap; transition:all .1s; }
+.dev-btn:hover { background:#ececec; }
+.dev-btn-sm { padding:6px 10px; font-size:11px; }
+.dev-btn-primary { background:#2E78C9; color:#fff; border-color:#2E78C9; }
+.dev-btn-primary:hover { background:#1a5fa8; }
+.dev-btn-danger { background:#dc3545; color:#fff; border-color:#dc3545; }
+.dev-btn-danger:hover { background:#b02a37; }
+#devFloatBtn { position:fixed; bottom:84px; right:14px; z-index:100; width:44px; height:44px; border-radius:50%; background:#222; color:#fff; border:none; font-size:18px; cursor:pointer; display:none; box-shadow:0 4px 12px rgba(0,0,0,.35); }
+
 /* --- toast feedback after an action --- */
 .pet-toast {
   position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
@@ -708,6 +730,10 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
   </div>
 
   <div id="content"></div>
+
+  <!-- Dev panel overlay — HD only -->
+  <div id="devPanel"><div id="devPanelContent"></div></div>
+  <button id="devFloatBtn" title="Dev Panel (HD only)" onclick="openDevPanel()">🛠️</button>
 
   <!-- Data restore banner — only visible when member count < 7 (after data loss) -->
   <div id="restoreBanner" style="display:none;background:#fff3cd;border:2px solid #f0ad4e;border-radius:12px;margin:12px 16px;padding:14px 16px;font-size:13px;color:#7a5c00;">
@@ -1060,6 +1086,353 @@ async function restoreHouseData(){
   catch(e){ alert('❌ Save failed: '+e.message+'\nCheck connection and try again.'); syncPaused = false; }
 }
 window.restoreHouseData = restoreHouseData;
+
+/* ═══════════════════════════════════════════════════════════════
+   🛠️  DEV PANEL — visible & accessible only when HD is active.
+   Zero changes to loadState / saveState / startRealtimeSync.
+   All actions call existing helpers then saveState() + render().
+   ═══════════════════════════════════════════════════════════════ */
+const DEV_UID = '0f1r5fjj';
+let devPanelOpen = false;
+let devPetTarget  = null;   // member ID selected in Pet section
+let devXpTarget   = null;   // member ID selected in XP section
+let devWipeTarget = null;   // member ID selected in Wipe section
+
+function isDevMode(){ return currentUserId === DEV_UID; }
+
+// ── helpers ────────────────────────────────────────────────────
+function devSave(){ saveState(); render(); if(devPanelOpen) openDevPanel(); }
+
+// ── 1. hatch to species ────────────────────────────────────────
+function devHatchToSpecies(memberId, species){
+  const m = memberById(memberId); if(!m) return;
+  ensurePet(m);
+  m.pet.species = species;
+  // add xpLog entries so petCareCount >= EVOS_TO_HATCH
+  const needed = Math.max(0, EVOS_TO_HATCH - petCareCount(memberId));
+  const now = Date.now();
+  for(let i=0; i<needed; i++){
+    state.xpLog.push({ id:uid(), memberId, source:'pet_feed', label:'[dev] hatch', xp:2, baseXp:2, multiplier:1, meta:'dev', weekKey:isoWeekKey(new Date()), at:now - i*1000 });
+  }
+  devSave();
+}
+
+// ── 2. set pet stat ────────────────────────────────────────────
+function devSetPetStat(memberId, stat, rawVal){
+  const m = memberById(memberId); if(!m) return;
+  ensurePet(m); tickPet(m);
+  const val = Number(rawVal);
+  const now = Date.now();
+  if(stat==='health'){  m.pet.health  = clampPct(val); m.pet.healthUpdatedAt  = now; }
+  if(stat==='energy'){  m.pet.energy  = clampPct(val); m.pet.energyUpdatedAt  = now; }
+  // reverse the decay formulas so the stat reads exactly val% right now
+  if(stat==='hunger'){  m.pet.lastFed   = now - ((100-clampPct(val)) / PET_HUNGER_DECAY_PER_HR) * 3600000; }
+  if(stat==='happiness'){ m.pet.lastHappy = now - ((100-clampPct(val)) / PET_HAPPY_DECAY_PER_HR) * 3600000; }
+  devSave();
+}
+
+// ── 3. mess & sick ─────────────────────────────────────────────
+function devAddMess(memberId){
+  const m = memberById(memberId); if(!m) return;
+  ensurePet(m);
+  m.pet.lastCleaned = Date.now() - (PET_MESS_THRESHOLD_HRS + 1) * 3600000;
+  devSave();
+}
+function devClearMess(memberId){
+  const m = memberById(memberId); if(!m) return;
+  ensurePet(m);
+  m.pet.lastCleaned = Date.now();
+  m.pet.lastHappy   = Date.now();
+  devSave();
+}
+function devMakeSick(memberId){
+  const m = memberById(memberId); if(!m) return;
+  ensurePet(m); tickPet(m);
+  m.pet.health = 15; m.pet.healthUpdatedAt = Date.now();
+  devSave();
+}
+function devCureSick(memberId){
+  const m = memberById(memberId); if(!m) return;
+  ensurePet(m); tickPet(m);
+  m.pet.health = 100; m.pet.healthUpdatedAt = Date.now();
+  devSave();
+}
+
+// ── 4. reset to egg ────────────────────────────────────────────
+function devResetToEgg(memberId){
+  const m = memberById(memberId); if(!m) return;
+  if(!confirm(`Reset ${escapeHtml(m.name)}'s pet back to egg?\nThis removes all their pet-care XP log entries.`)) return;
+  state.xpLog = state.xpLog.filter(e => !(e.memberId===memberId && ['pet_feed','pet_play','pet_clean'].includes(e.source)));
+  const now = Date.now();
+  m.pet = { name:null, createdAt:now, species:null, lastFed:now-4*3600000, lastHappy:now-4*3600000, lastPlayed:now-4*3600000, lastCleaned:now-4*3600000, isSleeping:false, sleepToggledAt:now, energy:80, energyUpdatedAt:now, health:100, healthUpdatedAt:now, log:[], streak:0, streakDate:null, color:m.pet?.color||'#9b78ff' };
+  devSave();
+}
+
+// ── 5. adjust XP ───────────────────────────────────────────────
+function devAdjustXP(memberId, amount){
+  const m = memberById(memberId); if(!m) return;
+  const amt = Number(amount);
+  if(isNaN(amt) || amt===0){ alert('Enter a non-zero number.'); return; }
+  state.xpLog.push({ id:uid(), memberId, source: amt>0?'dev_add':'dev_sub', label:`[dev] ${amt>0?'+':''}${amt} XP`, xp:amt, baseXp:Math.abs(amt), multiplier:1, meta:'dev', weekKey:isoWeekKey(new Date()), at:Date.now() });
+  devSave();
+}
+
+// ── 6. set level ───────────────────────────────────────────────
+function devSetLevel(memberId, targetLevel){
+  const m = memberById(memberId); if(!m) return;
+  const tl = Number(targetLevel);
+  if(isNaN(tl)||tl<1||tl>50){ alert('Level must be 1–50.'); return; }
+  let needed = 0;
+  for(let l=1; l<tl; l++) needed += thresholdForLevel(l);
+  const current = memberXP(memberId).total;
+  const diff = needed - current;
+  if(diff!==0){
+    state.xpLog.push({ id:uid(), memberId, source:'dev_level', label:`[dev] set Lv ${tl}`, xp:diff, baseXp:Math.abs(diff), multiplier:1, meta:'dev', weekKey:isoWeekKey(new Date()), at:Date.now() });
+  }
+  m.lastSeenLevel = tl;
+  devSave();
+}
+
+// ── 7. skip cooldown ───────────────────────────────────────────
+function devSkipCooldown(memberId){
+  const m = memberById(memberId); if(!m) return;
+  ensurePet(m);
+  const yesterday = Date.now() - 25*3600000;
+  m.pet.lastFed = yesterday; m.pet.lastPlayed = yesterday; m.pet.lastCleaned = yesterday;
+  devSave();
+}
+
+// ── 8. force restore dialog ────────────────────────────────────
+function devForceRestore(){
+  sessionStorage.removeItem('restoreDeclined');
+  devPanelOpen = false;
+  document.getElementById('devPanel').style.display = 'none';
+  checkAndRestoreIfNeeded();
+}
+
+// ── 9. export JSON ─────────────────────────────────────────────
+function devExportJSON(){
+  const json = JSON.stringify(state, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'house-board-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+// ── 10. wipe member ────────────────────────────────────────────
+function devWipeMember(memberId){
+  if(memberId===DEV_UID){ alert('Cannot wipe HD (the dev account).'); return; }
+  const m = memberById(memberId); if(!m) return;
+  if(!confirm(`⚠️ Permanently wipe ${escapeHtml(m.name)} from the house?\nThis removes their profile, XP, and all chore history. Cannot be undone.`)) return;
+  state.members = state.members.filter(x=>x.id!==memberId);
+  state.xpLog   = state.xpLog.filter(e=>e.memberId!==memberId);
+  state.completionLog = (state.completionLog||[]).filter(e=>e.memberId!==memberId);
+  state.taskAssignLog = (state.taskAssignLog||[]).filter(e=>e.memberId!==memberId);
+  devWipeTarget = null;
+  devSave();
+}
+
+// ── 11. fast forward ───────────────────────────────────────────
+function devFastForward(days){
+  const d = Number(days);
+  if(isNaN(d)||d<=0||d>365){ alert('Enter 1–365 days.'); return; }
+  if(!confirm(`Fast forward ${d} day(s) for ALL members? Stats will drain accordingly.`)) return;
+  const ms = d * 86400000;
+  state.members.forEach(m=>{
+    if(!m.pet) return;
+    const p = m.pet;
+    p.createdAt       -= ms;
+    p.lastFed         -= ms;
+    p.lastHappy       -= ms;
+    p.lastPlayed      -= ms;
+    p.lastCleaned     -= ms;
+    p.sleepToggledAt  -= ms;
+    p.energyUpdatedAt -= ms;
+    p.healthUpdatedAt -= ms;
+    if(p.log) p.log = p.log.map(e=>({...e, at:e.at-ms}));
+  });
+  state.xpLog = state.xpLog.map(e=>({...e, at:e.at-ms}));
+  state.chores.forEach(c=>{
+    if(c.dueDate){
+      const dd = new Date(c.dueDate+'T00:00:00'); dd.setDate(dd.getDate()-d); c.dueDate = isoDate(dd);
+    }
+    if(c.rotation?.anchorDate){
+      const ad = new Date(c.rotation.anchorDate+'T00:00:00'); ad.setDate(ad.getDate()-d); c.rotation.anchorDate = isoDate(ad);
+    }
+  });
+  devSave();
+}
+
+// ── 12. trigger level-up animation ────────────────────────────
+function devTriggerLevelUp(memberId){
+  const m = memberById(memberId); if(!m) return;
+  const lvl = levelInfo(memberXP(memberId).total).level;
+  m.lastSeenLevel = Math.max(1, lvl - 1);
+  devSave(); // checkLevelUps() fires inside render() → shows the toast
+}
+
+// ── Panel open / close ─────────────────────────────────────────
+function openDevPanel(){
+  if(!isDevMode()) return;
+  devPanelOpen = true;
+  if(!devPetTarget)  devPetTarget  = state.members.find(m=>m.id!==DEV_UID)?.id || state.members[0]?.id;
+  if(!devXpTarget)   devXpTarget   = devPetTarget;
+  if(!devWipeTarget) devWipeTarget = devPetTarget;
+  const panel = document.getElementById('devPanel');
+  if(!panel) return;
+  panel.style.display = 'flex';
+  document.getElementById('devPanelContent').innerHTML = renderDevPanelHTML();
+  attachDevHandlers();
+}
+function closeDevPanel(){
+  devPanelOpen = false;
+  const panel = document.getElementById('devPanel');
+  if(panel) panel.style.display = 'none';
+}
+window.openDevPanel  = openDevPanel;
+window.closeDevPanel = closeDevPanel;
+
+// ── Render HTML ────────────────────────────────────────────────
+function renderDevPanelHTML(){
+  const members = state.members;
+  const memberOpts = (selected) => members.map(m=>
+    `<option value="${m.id}" ${m.id===selected?'selected':''}>${escapeHtml(m.name)}</option>`
+  ).join('');
+  const petM = memberById(devPetTarget);
+  const petFull = petM ? petFullStats(petM) : null;
+  const speciesKeys = Object.keys(SPECIES_LABELS);
+  const xpM = memberById(devXpTarget);
+  const xpCurrent = xpM ? memberXP(xpM.id).total : 0;
+  const xpLevel = xpM ? levelInfo(xpCurrent).level : 1;
+
+  return `
+  <div class="dev-header">
+    <span>🛠️ Dev Panel <span style="font-size:10px;opacity:.6">HD only</span></span>
+    <button class="dev-close" onclick="closeDevPanel()">✕</button>
+  </div>
+
+  <div class="dev-section">
+    <div class="dev-section-title">🐾 Pet Controls</div>
+    <label class="dev-label">Target member</label>
+    <select class="dev-select" id="devPetMember">
+      ${memberOpts(devPetTarget)}
+    </select>
+
+    <label class="dev-label">Hatch to species</label>
+    <div class="dev-row">
+      ${speciesKeys.map(k=>`<button class="dev-btn dev-btn-sm" data-dev="hatch" data-sp="${k}">${SPECIES_LABELS[k].replace(' Chao','')}</button>`).join('')}
+    </div>
+
+    <label class="dev-label">Force stats</label>
+    <div class="dev-grid4">
+      <div><span class="dev-stat-label">Hunger %</span><input class="dev-input" id="devStatHunger" type="number" min="0" max="100" value="${petFull?Math.round(petFull.hunger):100}"></div>
+      <div><span class="dev-stat-label">Happy %</span><input class="dev-input" id="devStatHappy"  type="number" min="0" max="100" value="${petFull?Math.round(petFull.happiness):100}"></div>
+      <div><span class="dev-stat-label">Energy %</span><input class="dev-input" id="devStatEnergy" type="number" min="0" max="100" value="${petFull?Math.round(petFull.energy):80}"></div>
+      <div><span class="dev-stat-label">Health %</span><input class="dev-input" id="devStatHealth" type="number" min="0" max="100" value="${petFull?Math.round(petFull.health):100}"></div>
+    </div>
+    <button class="dev-btn dev-btn-primary" data-dev="setstats">Apply Stats</button>
+
+    <div class="dev-row" style="margin-top:10px;">
+      <button class="dev-btn" data-dev="addmess">💩 Add Mess</button>
+      <button class="dev-btn" data-dev="clearmess">✨ Clear Mess</button>
+      <button class="dev-btn" data-dev="makesick">🤒 Make Sick</button>
+      <button class="dev-btn" data-dev="curesick">💊 Cure</button>
+    </div>
+    <div class="dev-row" style="margin-top:6px;">
+      <button class="dev-btn" data-dev="skipcooldown">⏰ Skip Cooldown</button>
+      <button class="dev-btn dev-btn-danger" data-dev="resettoegg">🥚 Reset to Egg</button>
+    </div>
+  </div>
+
+  <div class="dev-section">
+    <div class="dev-section-title">⏩ Fast Forward</div>
+    <div class="dev-row">
+      <input class="dev-input" id="devFFDays" type="number" min="1" max="365" value="1" style="width:70px;">
+      <span style="font-size:12px;color:#666;align-self:center;">days</span>
+      <button class="dev-btn dev-btn-primary" data-dev="fastforward">Go</button>
+    </div>
+    <span style="font-size:10px;color:#999;">Shifts all pet timestamps, XP log, and chore dates back N days.</span>
+  </div>
+
+  <div class="dev-section">
+    <div class="dev-section-title">⭐ XP &amp; Levels</div>
+    <label class="dev-label">Target member</label>
+    <select class="dev-select" id="devXpMember">
+      ${memberOpts(devXpTarget)}
+    </select>
+    <div style="font-size:11px;color:#888;margin:4px 0 8px;">Current: ${xpCurrent} XP → Lv ${xpLevel}</div>
+    <div class="dev-row">
+      <input class="dev-input" id="devXpAmount" type="number" placeholder="e.g. +25 or -10" style="width:120px;">
+      <button class="dev-btn dev-btn-primary" data-dev="adjustxp">Adjust XP</button>
+    </div>
+    <div class="dev-row" style="margin-top:8px;">
+      <span style="font-size:12px;color:#666;align-self:center;">Set to Lv</span>
+      <input class="dev-input" id="devSetLevel" type="number" min="1" max="50" value="${xpLevel}" style="width:60px;">
+      <button class="dev-btn dev-btn-primary" data-dev="setlevel">Set</button>
+    </div>
+    <button class="dev-btn" data-dev="triggerlevelup" style="margin-top:8px;">🎊 Trigger Level-Up Anim</button>
+  </div>
+
+  <div class="dev-section">
+    <div class="dev-section-title">💾 Data Tools</div>
+    <div class="dev-row">
+      <button class="dev-btn" data-dev="exportjson">📤 Export JSON Backup</button>
+      <button class="dev-btn" data-dev="forcerestore">🔄 Force Restore Dialog</button>
+    </div>
+    <label class="dev-label" style="margin-top:10px;">Wipe a member</label>
+    <div class="dev-row">
+      <select class="dev-select" id="devWipeMember" style="flex:1;">
+        ${members.filter(m=>m.id!==DEV_UID).map(m=>
+          `<option value="${m.id}" ${m.id===devWipeTarget?'selected':''}>${escapeHtml(m.name)}</option>`
+        ).join('')}
+      </select>
+      <button class="dev-btn dev-btn-danger" data-dev="wipemember">🗑️ Wipe</button>
+    </div>
+    <span style="font-size:10px;color:#999;">Removes profile, all XP, and chore history. Cannot be undone.</span>
+  </div>`;
+}
+
+// ── Wire dev handlers ──────────────────────────────────────────
+function attachDevHandlers(){
+  const el = id => document.getElementById(id);
+  // member selectors update devXxxTarget
+  const pmSel = el('devPetMember'); if(pmSel) pmSel.onchange = e=>{ devPetTarget = e.target.value; openDevPanel(); };
+  const xmSel = el('devXpMember');  if(xmSel) xmSel.onchange  = e=>{ devXpTarget  = e.target.value; openDevPanel(); };
+  const wmSel = el('devWipeMember');if(wmSel) wmSel.onchange  = e=>{ devWipeTarget = e.target.value; };
+
+  document.querySelectorAll('[data-dev]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const act = btn.dataset.dev;
+      const pid = el('devPetMember')?.value || devPetTarget;
+      const xid = el('devXpMember')?.value  || devXpTarget;
+      const wid = el('devWipeMember')?.value || devWipeTarget;
+      if(act==='hatch')         devHatchToSpecies(pid, btn.dataset.sp);
+      else if(act==='setstats') {
+        devSetPetStat(pid,'hunger',  el('devStatHunger')?.value||100);
+        devSetPetStat(pid,'happiness',el('devStatHappy')?.value||100);
+        devSetPetStat(pid,'energy',  el('devStatEnergy')?.value||80);
+        devSetPetStat(pid,'health',  el('devStatHealth')?.value||100);
+      }
+      else if(act==='addmess')       devAddMess(pid);
+      else if(act==='clearmess')     devClearMess(pid);
+      else if(act==='makesick')      devMakeSick(pid);
+      else if(act==='curesick')      devCureSick(pid);
+      else if(act==='skipcooldown')  devSkipCooldown(pid);
+      else if(act==='resettoegg')    devResetToEgg(pid);
+      else if(act==='fastforward')   devFastForward(el('devFFDays')?.value||1);
+      else if(act==='adjustxp')      devAdjustXP(xid, el('devXpAmount')?.value||0);
+      else if(act==='setlevel')      devSetLevel(xid, el('devSetLevel')?.value||1);
+      else if(act==='triggerlevelup') devTriggerLevelUp(xid);
+      else if(act==='exportjson')    devExportJSON();
+      else if(act==='forcerestore')  devForceRestore();
+      else if(act==='wipemember')    devWipeMember(wid);
+    };
+  });
+}
+
 async function init(){
   selectedCalDate = todayStr();
   await loadState();
@@ -1652,6 +2025,10 @@ function render(){
   else if(activeTab==='bills') c.innerHTML = renderBills();
   else if(activeTab==='rules') c.innerHTML = renderRules();
   else if(activeTab==='pet') c.innerHTML = renderPetTab();
+  // Show/hide dev float button — only for HD
+  const devBtn = document.getElementById('devFloatBtn');
+  if(devBtn) devBtn.style.display = isDevMode() ? 'block' : 'none';
+
   // Show restore banner when house data seems incomplete (after data loss)
   const restoreBanner = document.getElementById('restoreBanner');
   if(restoreBanner){
