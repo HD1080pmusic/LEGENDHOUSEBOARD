@@ -1140,6 +1140,23 @@ function devSetPetStat(memberId, stat, rawVal){
   // reverse the decay formulas so the stat reads exactly val% right now
   if(stat==='hunger'){  m.pet.lastFed   = now - ((100-clampPct(val)) / PET_HUNGER_DECAY_PER_HR) * 3600000; }
   if(stat==='happiness'){ m.pet.lastHappy = now - ((100-clampPct(val)) / PET_HAPPY_DECAY_PER_HR) * 3600000; }
+  // NOTE: devSave() is NOT called here — caller must call it after all stats are set
+}
+function devApplyAllStats(memberId, hunger, happy, energy, health){
+  // Apply all four stats in one shot, then save once — avoids re-render stomping input values
+  const m = memberById(memberId); if(!m) return;
+  ensurePet(m); tickPet(m);
+  const now = Date.now();
+  m.pet.health     = clampPct(Number(health));  m.pet.healthUpdatedAt  = now;
+  m.pet.energy     = clampPct(Number(energy));  m.pet.energyUpdatedAt  = now;
+  m.pet.lastFed    = now - ((100-clampPct(Number(hunger))) / PET_HUNGER_DECAY_PER_HR) * 3600000;
+  m.pet.lastHappy  = now - ((100-clampPct(Number(happy)))  / PET_HAPPY_DECAY_PER_HR) * 3600000;
+  devSave();
+}
+function devAddCarePoint(memberId){
+  const m = memberById(memberId); if(!m) return;
+  ensurePet(m);
+  state.xpLog.push({ id:uid(), memberId, source:'pet_feed', label:'[dev] +1 care point', xp:2, baseXp:2, multiplier:1, meta:'dev', weekKey:isoWeekKey(new Date()), at:Date.now() });
   devSave();
 }
 
@@ -1337,6 +1354,11 @@ function renderDevPanelHTML(){
     <div class="dev-row">
       ${speciesKeys.map(k=>`<button class="dev-btn dev-btn-sm" data-dev="hatch" data-sp="${k}">${SPECIES_LABELS[k].replace(' Chao','')}</button>`).join('')}
     </div>
+    <label class="dev-label">Care points — <strong>${petCareCount(devPetTarget||'')} / ${EVOS_TO_HATCH}</strong> to hatch</label>
+    <div class="dev-row">
+      <button class="dev-btn dev-btn-sm" data-dev="addcarepoint">+1 Care Point</button>
+      <span style="font-size:10px;color:#999;align-self:center;">Each tap adds one. Egg hatches at ${EVOS_TO_HATCH}.</span>
+    </div>
 
     <label class="dev-label">Force stats</label>
     <div class="dev-grid4">
@@ -1423,16 +1445,19 @@ function attachDevHandlers(){
       const wid = el('devWipeMember')?.value || devWipeTarget;
       if(act==='hatch')         devHatchToSpecies(pid, btn.dataset.sp);
       else if(act==='setstats') {
-        devSetPetStat(pid,'hunger',  el('devStatHunger')?.value||100);
-        devSetPetStat(pid,'happiness',el('devStatHappy')?.value||100);
-        devSetPetStat(pid,'energy',  el('devStatEnergy')?.value||80);
-        devSetPetStat(pid,'health',  el('devStatHealth')?.value||100);
+        // Read ALL values from the DOM before ANY save/render (re-render resets inputs)
+        const hunger = el('devStatHunger')?.value ?? 100;
+        const happy  = el('devStatHappy')?.value  ?? 100;
+        const energy = el('devStatEnergy')?.value ?? 80;
+        const health = el('devStatHealth')?.value ?? 100;
+        devApplyAllStats(pid, hunger, happy, energy, health);
       }
       else if(act==='addmess')       devAddMess(pid);
       else if(act==='clearmess')     devClearMess(pid);
       else if(act==='makesick')      devMakeSick(pid);
       else if(act==='curesick')      devCureSick(pid);
       else if(act==='skipcooldown')  devSkipCooldown(pid);
+      else if(act==='addcarepoint')  devAddCarePoint(pid);
       else if(act==='resettoegg')    devResetToEgg(pid);
       else if(act==='fastforward')   devFastForward(el('devFFDays')?.value||1);
       else if(act==='adjustxp')      devAdjustXP(xid, el('devXpAmount')?.value||0);
