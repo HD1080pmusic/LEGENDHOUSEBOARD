@@ -1031,10 +1031,18 @@ const RESTORED_STATE = {
       pet:{ name:null, createdAt:1782014400000, species:'classic', lastFed:1782532800000, lastHappy:1782446400000, lastPlayed:1782446400000, lastCleaned:1782360000000, isSleeping:false, sleepToggledAt:1782014400000, energy:80, energyUpdatedAt:1782532800000, health:100, healthUpdatedAt:1782532800000, log:[], streak:0, streakDate:null, color:'#9b78ff' } },
   ],
   chores: [
-    { id:'gx6cz5xb', type:'rotating', title:'Empty dish dryer (daily, in pairs)',                       rotation:{ intervalWeeks:1, anchorDate:'2026-07-01', turns:[] }, doneForPeriod:null },
-    { id:'wazxhmic', type:'rotating', title:'Empty trash & take out bins (Thursday night, in pairs)',   rotation:{ intervalWeeks:1, anchorDate:'2026-07-02', turns:[] }, doneForPeriod:null },
-    { id:'0876gm85', type:'fixed', title:'Clean air fryer & microwave',                                  assignee:null, frequency:'weekly', dueDate:'2026-07-01', done:false },
-    { id:'lcmmzgcq', type:'fixed', title:'Front door & shoe organization + towel restock & laundry',    assignee:null, frequency:'weekly', dueDate:'2026-07-01', done:false },
+    // Dishwasher — Kaitlin + HD on rotation from June 29 (week of Jun 29–Jul 5)
+    { id:'gx6cz5xb', type:'rotating', title:'Empty dish dryer (daily, in pairs)',
+      rotation:{ intervalWeeks:1, anchorDate:'2026-06-29', turns:[['kaitr001','0f1r5fjj'],['ryanr001','jimmyr01']] }, doneForPeriod:null },
+    // Trash — Ryan + Jimmy
+    { id:'wazxhmic', type:'rotating', title:'Empty trash & take out bins (Thursday night, in pairs)',
+      rotation:{ intervalWeeks:1, anchorDate:'2026-07-02', turns:[['ryanr001','jimmyr01'],['kaitr001','0f1r5fjj']] }, doneForPeriod:null },
+    // Microwave & airfryer — Christi
+    { id:'0876gm85', type:'fixed', title:'Clean air fryer & microwave',                    assignee:'chrisr01', frequency:'weekly', dueDate:'2026-07-06', done:false },
+    // Shoes, towels & laundry — Shayla
+    { id:'lcmmzgcq', type:'fixed', title:'Front door & shoe organization + towel restock & laundry', assignee:'shayla01', frequency:'weekly', dueDate:'2026-07-06', done:false },
+    // Hallway — henry
+    { id:'hallwy01', type:'fixed', title:'Hallway clean-up',                               assignee:'henryr01', frequency:'weekly', dueDate:'2026-07-06', done:false },
   ],
   xpLog: [
     // Kaitlin — Lv 2 (30 XP): 5×pet_feed care actions + 1 chore
