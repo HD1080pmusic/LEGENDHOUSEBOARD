@@ -708,6 +708,15 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
   </div>
 
   <div id="content"></div>
+
+  <!-- Data restore banner — only visible when member count < 7 (after data loss) -->
+  <div id="restoreBanner" style="display:none;background:#fff3cd;border:2px solid #f0ad4e;border-radius:12px;margin:12px 16px;padding:14px 16px;font-size:13px;color:#7a5c00;">
+    <strong>⚠️ House data looks incomplete</strong> — it seems some members and progress were lost.
+    Tap below to restore everyone back to their last known levels, pets, and chores.
+    <br><br>
+    <button onclick="restoreHouseData()" style="background:#f0ad4e;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-weight:700;font-size:13px;cursor:pointer;">🔄 Restore House Data</button>
+    <small style="display:block;margin-top:8px;color:#a07020;">This restores: Kaitlin Lv 2 (pink Classic Chao), Jimmy Lv 2 (Hell Chao), Ryan Lv 1 half, HD Lv 3 (Angel Chao), Shayla Lv 0, henry Lv 1 half, Christi Lv 1 ⅔ (Classic Chao) + all 4 chores.</small>
+  </div>
 </div>
 
 <script type="module">
@@ -957,6 +966,81 @@ function importGoogleEvents(items, importedByMemberId){
 }
 
 /* ---------- INIT ---------- */
+/* ============================================================
+   RESTORED STATE — pre-seeded from user's memory after data loss
+   July 1, 2026. Levels, care points, and species reconstructed.
+   Chores carried over from last known Firebase document.
+   ============================================================ */
+const RESTORED_STATE = {
+  members: [
+    { id:'kaitr001', name:'Kaitlin', color:'#D63384', avatarData:null, mascotGif:'Kuromi GIF.gif', hidden:false, lastSeenLevel:2,
+      pet:{ name:null, createdAt:1782014400000, species:'classic', lastFed:1782532800000, lastHappy:1782446400000, lastPlayed:1782446400000, lastCleaned:1782360000000, isSleeping:false, sleepToggledAt:1782014400000, energy:80, energyUpdatedAt:1782532800000, health:100, healthUpdatedAt:1782532800000, log:[], streak:0, streakDate:null, color:'#ff8fb8' } },
+    { id:'jimmyr01', name:'Jimmy',   color:'#8B0000', avatarData:null, mascotGif:'Piccolo GIF.gif', hidden:false, lastSeenLevel:2,
+      pet:{ name:null, createdAt:1782014400000, species:'hell',    lastFed:1782532800000, lastHappy:1782446400000, lastPlayed:1782446400000, lastCleaned:1782360000000, isSleeping:false, sleepToggledAt:1782014400000, energy:80, energyUpdatedAt:1782532800000, health:100, healthUpdatedAt:1782532800000, log:[], streak:0, streakDate:null, color:'#ff7a7a' } },
+    { id:'ryanr001', name:'Ryan',    color:'#228B22', avatarData:null, mascotGif:'Zoro GIF.gif',   hidden:false, lastSeenLevel:1,
+      pet:{ name:null, createdAt:1782360000000, species:null,      lastFed:1782446400000, lastHappy:1782273600000, lastPlayed:1782273600000, lastCleaned:1782273600000, isSleeping:false, sleepToggledAt:1782360000000, energy:80, energyUpdatedAt:1782446400000, health:100, healthUpdatedAt:1782446400000, log:[], streak:0, streakDate:null, color:'#6bcf8f' } },
+    { id:'0f1r5fjj', name:'HD',     color:'#2E78C9', avatarData:null, mascotGif:'totoro-jumping.gif', hidden:false, lastSeenLevel:3,
+      pet:{ name:null, createdAt:1782014400000, species:'angel',   lastFed:1782619200000, lastHappy:1782532800000, lastPlayed:1782532800000, lastCleaned:1782446400000, isSleeping:false, sleepToggledAt:1782014400000, energy:80, energyUpdatedAt:1782619200000, health:100, healthUpdatedAt:1782619200000, log:[], streak:0, streakDate:null, color:'#5fb8e8' } },
+    { id:'shayla01', name:'Shayla',  color:'#FF1493', avatarData:null, mascotGif:'Hello Kitty GIF.gif', hidden:false, lastSeenLevel:1,
+      pet:{ name:null, createdAt:1782619200000, species:null,      lastFed:1782576000000, lastHappy:1782532800000, lastPlayed:1782532800000, lastCleaned:1782532800000, isSleeping:false, sleepToggledAt:1782619200000, energy:80, energyUpdatedAt:1782619200000, health:100, healthUpdatedAt:1782619200000, log:[], streak:0, streakDate:null, color:'#9b78ff' } },
+    { id:'henryr01', name:'henry',   color:'#6A5ACD', avatarData:null, mascotGif:null,              hidden:false, lastSeenLevel:1,
+      pet:{ name:null, createdAt:1782273600000, species:null,      lastFed:1782446400000, lastHappy:1782360000000, lastPlayed:1782360000000, lastCleaned:1782273600000, isSleeping:false, sleepToggledAt:1782273600000, energy:80, energyUpdatedAt:1782446400000, health:100, healthUpdatedAt:1782446400000, log:[], streak:0, streakDate:null, color:'#9b78ff' } },
+    { id:'chrisr01', name:'Christi', color:'#5fb8e8', avatarData:null, mascotGif:'Cinamoroll GIF.gif', hidden:false, lastSeenLevel:1,
+      pet:{ name:null, createdAt:1782014400000, species:'classic', lastFed:1782532800000, lastHappy:1782446400000, lastPlayed:1782446400000, lastCleaned:1782360000000, isSleeping:false, sleepToggledAt:1782014400000, energy:80, energyUpdatedAt:1782532800000, health:100, healthUpdatedAt:1782532800000, log:[], streak:0, streakDate:null, color:'#9b78ff' } },
+  ],
+  chores: [
+    { id:'gx6cz5xb', type:'rotating', title:'Empty dish dryer (daily, in pairs)',                       rotation:{ intervalWeeks:1, anchorDate:'2026-07-01', turns:[] }, doneForPeriod:null },
+    { id:'wazxhmic', type:'rotating', title:'Empty trash & take out bins (Thursday night, in pairs)',   rotation:{ intervalWeeks:1, anchorDate:'2026-07-02', turns:[] }, doneForPeriod:null },
+    { id:'0876gm85', type:'fixed', title:'Clean air fryer & microwave',                                  assignee:null, frequency:'weekly', dueDate:'2026-07-01', done:false },
+    { id:'lcmmzgcq', type:'fixed', title:'Front door & shoe organization + towel restock & laundry',    assignee:null, frequency:'weekly', dueDate:'2026-07-01', done:false },
+  ],
+  xpLog: [
+    // Kaitlin — Lv 2 (30 XP): 5×pet_feed care actions + 1 chore
+    { id:'xk01', memberId:'kaitr001', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W26', at:1782100800000 },
+    { id:'xk02', memberId:'kaitr001', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W26', at:1782187200000 },
+    { id:'xk03', memberId:'kaitr001', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W27', at:1782273600000 },
+    { id:'xk04', memberId:'kaitr001', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W27', at:1782360000000 },
+    { id:'xk05', memberId:'kaitr001', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W27', at:1782446400000 },
+    { id:'xk06', memberId:'kaitr001', source:'chore',    label:'Completed chore',  xp:20, baseXp:20, multiplier:1, meta:null, weekKey:'2026-W27', at:1782532800000 },
+    // Jimmy — Lv 2 (30 XP): 5×pet_feed + 1 chore
+    { id:'xj01', memberId:'jimmyr01', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W26', at:1782100800000 },
+    { id:'xj02', memberId:'jimmyr01', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W26', at:1782187200000 },
+    { id:'xj03', memberId:'jimmyr01', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W27', at:1782273600000 },
+    { id:'xj04', memberId:'jimmyr01', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W27', at:1782360000000 },
+    { id:'xj05', memberId:'jimmyr01', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W27', at:1782446400000 },
+    { id:'xj06', memberId:'jimmyr01', source:'chore',    label:'Completed chore',  xp:20, baseXp:20, multiplier:1, meta:null, weekKey:'2026-W27', at:1782532800000 },
+    // Ryan — Lv 1 half (15 XP), 1 care point
+    { id:'xr01', memberId:'ryanr001', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W27', at:1782446400000 },
+    { id:'xr02', memberId:'ryanr001', source:'chore',    label:'Completed chore',  xp:13, baseXp:13, multiplier:1, meta:null, weekKey:'2026-W27', at:1782532800000 },
+    // HD — Lv 3 (65 XP): 5×pet_feed + 1 large chore block
+    { id:'xh01', memberId:'0f1r5fjj', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W26', at:1782100800000 },
+    { id:'xh02', memberId:'0f1r5fjj', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W26', at:1782187200000 },
+    { id:'xh03', memberId:'0f1r5fjj', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W27', at:1782273600000 },
+    { id:'xh04', memberId:'0f1r5fjj', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W27', at:1782360000000 },
+    { id:'xh05', memberId:'0f1r5fjj', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W27', at:1782446400000 },
+    { id:'xh06', memberId:'0f1r5fjj', source:'chore',    label:'Completed chore',  xp:55, baseXp:55, multiplier:1, meta:null, weekKey:'2026-W27', at:1782532800000 },
+    // henry — Lv 1 half (15 XP), 2 care points
+    { id:'xhn1', memberId:'henryr01', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W27', at:1782360000000 },
+    { id:'xhn2', memberId:'henryr01', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W27', at:1782446400000 },
+    { id:'xhn3', memberId:'henryr01', source:'chore',    label:'Completed chore',  xp:11, baseXp:11, multiplier:1, meta:null, weekKey:'2026-W27', at:1782532800000 },
+    // Christi — Lv 1 two-thirds (20 XP): 5×pet_feed + 1 chore
+    { id:'xc01', memberId:'chrisr01', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W26', at:1782100800000 },
+    { id:'xc02', memberId:'chrisr01', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W26', at:1782187200000 },
+    { id:'xc03', memberId:'chrisr01', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W27', at:1782273600000 },
+    { id:'xc04', memberId:'chrisr01', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W27', at:1782360000000 },
+    { id:'xc05', memberId:'chrisr01', source:'pet_feed', label:'Fed pet',          xp:2,  baseXp:2,  multiplier:1, meta:null, weekKey:'2026-W27', at:1782446400000 },
+    { id:'xc06', memberId:'chrisr01', source:'chore',    label:'Completed chore',  xp:10, baseXp:10, multiplier:1, meta:null, weekKey:'2026-W27', at:1782532800000 },
+  ],
+  events:[], reminders:[], expenses:[], dayPhotos:{}, houseRules:[], groceryItems:[],
+  completionLog:[], taskAssignLog:[], weeklyScorecard:[],
+  importedDefaultChores:true, mergedFrontDoorTowel:true, mascotsAutoAssigned:true, notifSeen:{},
+};
+function restoreHouseData(){
+  if(!confirm('This will restore all 7 members, their levels, pets, and chores from memory. Your current data will be replaced. Continue?')) return;
+  Object.assign(state, JSON.parse(JSON.stringify(RESTORED_STATE)));
+  saveState();
+  render();
+}
 async function init(){
   selectedCalDate = todayStr();
   await loadState();
@@ -1549,6 +1633,12 @@ function render(){
   else if(activeTab==='bills') c.innerHTML = renderBills();
   else if(activeTab==='rules') c.innerHTML = renderRules();
   else if(activeTab==='pet') c.innerHTML = renderPetTab();
+  // Show restore banner when house data seems incomplete (after data loss)
+  const restoreBanner = document.getElementById('restoreBanner');
+  if(restoreBanner){
+    const needsRestore = state.members.length < 7;
+    restoreBanner.style.display = needsRestore ? 'block' : 'none';
+  }
   attachHandlers();
   renderMembersRow();
   checkLevelUps();
