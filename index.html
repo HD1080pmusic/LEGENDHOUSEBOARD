@@ -806,10 +806,22 @@ async function loadState(){
     if(snap.exists() && snap.data().json){ state = JSON.parse(snap.data().json); }
   } catch(e){ console.error('load failed', e); }
   normalizeState();
+  checkAndRestoreIfNeeded();
 }
 async function saveState(){
   try{ await setDoc(stateDocRef, { json: JSON.stringify(state), updatedAt: Date.now() }); }
   catch(e){ console.error('save failed', e); }
+}
+function checkAndRestoreIfNeeded(){
+  if(state.members.length < 7 && !sessionStorage.getItem('restoreDeclined')){
+    const ok = confirm('⚠️ Your house data looks incomplete (' + state.members.length + ' of 7 members found).\n\nRestore everyone to their last known levels, pets and chores?\n\n• Kaitlin Lv 2 (Classic Chao / Kuromi)\n• Jimmy Lv 2 (Hell Chao / Piccolo)\n• Ryan Lv 1 half (egg / Zoro)\n• HD Lv 3 (Angel Chao / Totoro)\n• Shayla Lv 0 (egg / Hello Kitty)\n• henry Lv 1 half (egg)\n• Christi Lv 1 ⅔ (Classic Chao / Cinnamoroll)');
+    if(ok){
+      Object.assign(state, JSON.parse(JSON.stringify(RESTORED_STATE)));
+      saveState();
+    } else {
+      sessionStorage.setItem('restoreDeclined','1');
+    }
+  }
 }
 function startRealtimeSync(){
   onSnapshot(stateDocRef, (snap)=>{
