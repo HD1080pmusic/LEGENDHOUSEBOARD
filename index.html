@@ -812,19 +812,23 @@ async function saveState(){
   try{ await setDoc(stateDocRef, { json: JSON.stringify(state), updatedAt: Date.now() }); }
   catch(e){ console.error('save failed', e); }
 }
-function checkAndRestoreIfNeeded(){
+async function checkAndRestoreIfNeeded(){
   if(state.members.length < 7 && !sessionStorage.getItem('restoreDeclined')){
     const ok = confirm('⚠️ Your house data looks incomplete (' + state.members.length + ' of 7 members found).\n\nRestore everyone to their last known levels, pets and chores?\n\n• Kaitlin Lv 2 (Classic Chao / Kuromi)\n• Jimmy Lv 2 (Hell Chao / Piccolo)\n• Ryan Lv 1 half (egg / Zoro)\n• HD Lv 3 (Angel Chao / Totoro)\n• Shayla Lv 0 (egg / Hello Kitty)\n• henry Lv 1 half (egg)\n• Christi Lv 1 ⅔ (Classic Chao / Cinnamoroll)');
     if(ok){
+      syncPaused = true;
       Object.assign(state, JSON.parse(JSON.stringify(RESTORED_STATE)));
-      saveState();
+      try{ await saveState(); alert('✅ Data restored! Reloading now.'); location.reload(); }
+      catch(e){ alert('❌ Save failed: '+e.message+'\nTry again.'); syncPaused = false; }
     } else {
       sessionStorage.setItem('restoreDeclined','1');
     }
   }
 }
+let syncPaused = false; // pause onSnapshot during restore to prevent race condition
 function startRealtimeSync(){
   onSnapshot(stateDocRef, (snap)=>{
+    if(syncPaused) return; // don't overwrite during an active restore
     if(!snap.exists()) return;
     const data = snap.data();
     if(!data || !data.json) return;
@@ -1047,11 +1051,13 @@ const RESTORED_STATE = {
   completionLog:[], taskAssignLog:[], weeklyScorecard:[],
   importedDefaultChores:true, mergedFrontDoorTowel:true, mascotsAutoAssigned:true, notifSeen:{},
 };
-function restoreHouseData(){
+async function restoreHouseData(){
   if(!confirm('This will restore all 7 members, their levels, pets, and chores from memory. Your current data will be replaced. Continue?')) return;
+  syncPaused = true;
   Object.assign(state, JSON.parse(JSON.stringify(RESTORED_STATE)));
-  saveState();
   render();
+  try{ await saveState(); alert('✅ Restored! Reloading now.'); location.reload(); }
+  catch(e){ alert('❌ Save failed: '+e.message+'\nCheck connection and try again.'); syncPaused = false; }
 }
 window.restoreHouseData = restoreHouseData;
 async function init(){
