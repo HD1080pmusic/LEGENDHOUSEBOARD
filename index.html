@@ -860,6 +860,52 @@ function normalizeState(){
     state.taskAssignLog = [];
   }
 }
+// Writes the current week's round-robin assignments directly into the chore fields
+// so the existing chore display works with real data — no dynamic overlay needed.
+// Returns true if anything changed (week turned over), so caller can save to Firebase.
+function applyRotationToChores(){
+  const r = state.choreRotation;
+  if(!r || !r.startOrder) return false;
+  const today = todayStr();
+  const isPhase2 = today >= PHASE2_START && r.phase2;
+  const cfg = isPhase2 ? r.phase2 : r;
+  const slots = isPhase2 ? ROTATION_SLOTS_P2 : ROTATION_SLOTS;
+  const week = Math.max(0, weeksBetween(cfg.anchorDate, today));
+  const weekKey = `${cfg.anchorDate}:${week}`;
+  if(r._appliedWeekKey === weekKey) return false; // already up to date
+  const n = cfg.startOrder.length;
+  // Build choreId → [memberId, ...] for this week
+  const byChore = {};
+  slots.forEach((slot, i) => {
+    const mid = cfg.startOrder[((i - week) % n + n) % n];
+    if(!byChore[slot.choreId]) byChore[slot.choreId] = [];
+    byChore[slot.choreId].push(mid);
+  });
+  // Apply directly to chore records
+  state.chores.forEach(ch => {
+    const members = byChore[ch.id];
+    if(!members) return; // not part of the global rotation
+    if(members.length === 1) {
+      // Single-person slot → fixed chore
+      ch.type = 'fixed';
+      ch.assignee = members[0];
+      ch.frequency = ch.frequency || 'weekly';
+      if(!ch.dueDate || ch.dueDate < today) ch.dueDate = today;
+      ch.done = false;
+    } else {
+      // Shared slot → rotating chore, set current people as the active turn
+      ch.type = 'rotating';
+      if(!ch.rotation) ch.rotation = {};
+      ch.rotation.intervalWeeks = 1;
+      ch.rotation.anchorDate = today;      // anchor = today so turn[0] is active now
+      ch.rotation.turns = [members];       // single turn; gets refreshed next week
+      ch.doneForPeriod = null;
+    }
+  });
+  r._appliedWeekKey = weekKey;
+  return true; // changed — caller should saveState()
+}
+
 async function loadState(){
   try{
     const snap = await getDoc(stateDocRef);
@@ -1572,6 +1618,7 @@ async function init(){
   sessionStorage.removeItem('restoreDeclined'); // always re-check on fresh load
   await loadState();
   if(scoreCompletedWeeks()) await saveState();
+  if(applyRotationToChores()) await saveState(); // push this week's rotation to Firebase
   if(!state.importedDefaultChores){
     seedImportedChores();
     state.importedDefaultChores = true;
@@ -3235,13 +3282,10 @@ function choreInvolvesMember(ch, memberId){
   }
   return false;
 }
-function choreRow(ch, rotationMap, nextMap){
+function choreRow(ch){
   const done = isChoreDone(ch);
   const eff = effectiveDate(ch);
   const overdue = !done && eff < todayStr();
-  // Override displayed assignees with rotation-computed ones if available
-  const rotMembers = rotationMap && rotationMap[ch.id];
-  const nextMembers = nextMap && nextMap[ch.id];
 
   if(ch.type==='linked'){
     const plan = state.weeklyRotation;
@@ -3273,8 +3317,7 @@ function choreRow(ch, rotationMap, nextMap){
   }
   if(ch.type==='rotating'){
     const st = rotationStatus(ch);
-    const displayMembers = rotMembers || (st.needsSetup ? [] : st.turnMembers);
-    if(!rotMembers && st.needsSetup){
+    if(st.needsSetup){
       return `
       <div class="row">
         <div class="check" style="opacity:.3;cursor:default;"></div>
@@ -3287,12 +3330,9 @@ function choreRow(ch, rotationMap, nextMap){
         <button class="icon-btn" data-action="chore-menu" data-id="${ch.id}" title="More actions">⋯</button>
       </div>`;
     }
-    const avatarsHtml = displayMembers.map(id=>avatarHtml(memberById(id),'sm')).join('');
-    const names = displayMembers.map(id=>memberById(id)?.name||'?').join(' & ');
-    const nextHint = nextMembers ? ' · Next: '+nextMembers.map(id=>memberById(id)?.name||'?').join(' & ') : '';
-    const subtitle = rotMembers
-      ? `${names} · round-robin${nextHint}`
-      : `${names} · every ${ch.rotation.intervalWeeks===1?'week':ch.rotation.intervalWeeks+' wks'}${ch.draftRotation?' · 📋 next rotation planned':''}${nextMembers?' · Next: '+nextMembers.map(id=>memberById(id)?.name||'?').join(' & '):''}`;
+    const avatarsHtml = st.turnMembers.map(id=>avatarHtml(memberById(id),'sm')).join('');
+    const names = st.turnMembers.map(id=>memberById(id)?.name||'?').join(' & ');
+    const subtitle = `${names} · every ${ch.rotation.intervalWeeks===1?'week':ch.rotation.intervalWeeks+' wks'}${ch.draftRotation?' · 📋 next rotation planned':''}`;
     return `
     <div class="row">
       <div class="check ${done?'done':''}" data-action="toggle-chore" data-id="${ch.id}">${done?'✓':''}</div>
@@ -3305,17 +3345,14 @@ function choreRow(ch, rotationMap, nextMap){
       <button class="icon-btn" data-action="chore-menu" data-id="${ch.id}" title="More actions">⋯</button>
     </div>`;
   }
-  // Fixed chore — use rotation-computed people if available
-  const assigneeIds = rotMembers || (ch.assignee ? [ch.assignee] : []);
-  const assigneeNames = assigneeIds.map(id=>memberById(id)?.name||'?').join(' & ');
-  const assigneeAvatars = assigneeIds.map(id=>avatarHtml(memberById(id),'sm')).join('');
+  const assignee = memberById(ch.assignee);
   return `
   <div class="row">
     <div class="check ${done?'done':''}" data-action="toggle-chore" data-id="${ch.id}">${done?'✓':''}</div>
-    ${assigneeAvatars||'<div class="avatar sm" style="background:#9AA0AC">?</div>'}
+    ${avatarHtml(assignee,'sm')}
     <div class="row-main">
       <div class="row-title">${escapeHtml(ch.title)}</div>
-      <div class="row-sub">${assigneeNames||'Unassigned'} · ${rotMembers?'round-robin'+(nextMembers?' · Next: '+nextMembers.map(id=>memberById(id)?.name||'?').join(' & '):''):ch.frequency}</div>
+      <div class="row-sub">${assignee?escapeHtml(assignee.name):'Unassigned'} · ${ch.frequency}</div>
     </div>
     <span class="tag ${overdue?'overdue':(eff===todayStr()?'today':'')}">${fmtDate(eff)}</span>
     <button class="icon-btn" data-action="chore-menu" data-id="${ch.id}" title="More actions">⋯</button>
@@ -3918,7 +3955,7 @@ function renderChores(){
           <span class="chip ${choreSubTab===t.key?'active':''}" data-action="chore-subtab" data-subtab="${t.key}" style="${choreSubTab===t.key?'background:var(--green);border-color:transparent;color:#fff;':''}">${t.label} (${counts[t.key]})</span>
         `).join('')}
       </div>
-      ${filtered.length===0?`<div class="empty">${choreSubTab==='all'?'No chores yet — add one above.':'Nothing in this view yet.'}</div>`:filtered.map(ch=>choreRow(ch, getRotationByChore(), getRotationByChore(1))).join('')}
+      ${filtered.length===0?`<div class="empty">${choreSubTab==='all'?'No chores yet — add one above.':'Nothing in this view yet.'}</div>`:filtered.map(ch=>choreRow(ch)).join('')}
     </div>
   `;
 }
