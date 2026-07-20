@@ -3235,12 +3235,13 @@ function choreInvolvesMember(ch, memberId){
   }
   return false;
 }
-function choreRow(ch, rotationMap){
+function choreRow(ch, rotationMap, nextMap){
   const done = isChoreDone(ch);
   const eff = effectiveDate(ch);
   const overdue = !done && eff < todayStr();
   // Override displayed assignees with rotation-computed ones if available
   const rotMembers = rotationMap && rotationMap[ch.id];
+  const nextMembers = nextMap && nextMap[ch.id];
 
   if(ch.type==='linked'){
     const plan = state.weeklyRotation;
@@ -3288,9 +3289,10 @@ function choreRow(ch, rotationMap){
     }
     const avatarsHtml = displayMembers.map(id=>avatarHtml(memberById(id),'sm')).join('');
     const names = displayMembers.map(id=>memberById(id)?.name||'?').join(' & ');
+    const nextHint = nextMembers ? ' · Next: '+nextMembers.map(id=>memberById(id)?.name||'?').join(' & ') : '';
     const subtitle = rotMembers
-      ? `${names} · round-robin rotation`
-      : `${names} · every ${ch.rotation.intervalWeeks===1?'week':ch.rotation.intervalWeeks+' wks'}${ch.draftRotation?' · 📋 next rotation planned':''}`;
+      ? `${names} · round-robin${nextHint}`
+      : `${names} · every ${ch.rotation.intervalWeeks===1?'week':ch.rotation.intervalWeeks+' wks'}${ch.draftRotation?' · 📋 next rotation planned':''}${nextMembers?' · Next: '+nextMembers.map(id=>memberById(id)?.name||'?').join(' & '):''}`;
     return `
     <div class="row">
       <div class="check ${done?'done':''}" data-action="toggle-chore" data-id="${ch.id}">${done?'✓':''}</div>
@@ -3313,7 +3315,7 @@ function choreRow(ch, rotationMap){
     ${assigneeAvatars||'<div class="avatar sm" style="background:#9AA0AC">?</div>'}
     <div class="row-main">
       <div class="row-title">${escapeHtml(ch.title)}</div>
-      <div class="row-sub">${assigneeNames||'Unassigned'} · ${rotMembers?'round-robin rotation':ch.frequency}</div>
+      <div class="row-sub">${assigneeNames||'Unassigned'} · ${rotMembers?'round-robin'+(nextMembers?' · Next: '+nextMembers.map(id=>memberById(id)?.name||'?').join(' & '):''):ch.frequency}</div>
     </div>
     <span class="tag ${overdue?'overdue':(eff===todayStr()?'today':'')}">${fmtDate(eff)}</span>
     <button class="icon-btn" data-action="chore-menu" data-id="${ch.id}" title="More actions">⋯</button>
@@ -3902,66 +3904,21 @@ function renderChores(){
       <button class="btn ghost" data-action="open-quick-task" style="margin-left:8px;">📌 Assign a task</button>
       <button class="btn ghost" data-action="open-weekly-rotation" style="margin-left:8px;">${state.weeklyRotation?'Edit weekly rotation':'Set up weekly rotation (no overlaps)'}</button>
     </div>
-    ${(()=>{
-      const rot = getCurrentRotation();
-      const rotNext = getCurrentRotation(1);
-      if(!rot) return '';
-      const chores = state.chores;
-      const isPhase2 = todayStr() >= PHASE2_START;
-      const phaseAnchor = isPhase2 ? (state.choreRotation.phase2?.anchorDate||PHASE2_START) : state.choreRotation.anchorDate;
-      const weekNum = Math.max(0, weeksBetween(phaseAnchor, todayStr()));
-      const daysToP2 = !isPhase2 ? Math.ceil((new Date(PHASE2_START+'T00:00:00') - new Date())/86400000) : 0;
-      return `
-      <div class="card" style="border-left:3px solid var(--purple);">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-          <h3 style="margin:0;">🔄 This Week's Rotation${isPhase2?' (6-person)':''}</h3>
-          <span style="font-family:var(--pixel-font);font-size:9px;color:var(--ink-soft);">Week ${weekNum+1}</span>
-        </div>
-        ${!isPhase2&&daysToP2<=14?`<div style="background:#fff8e6;border:1px solid #f0c060;border-radius:8px;padding:8px 10px;font-size:11px;color:#7a5000;margin-bottom:10px;">⚠️ <b>Aug 3 transition in ${daysToP2} day${daysToP2===1?'':'s'}:</b> Henry leaves, hallway removed — 6-person rotation begins automatically.</div>`:''}
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          ${rot.map((slot,i)=>{
-            const m = memberById(slot.memberId);
-            const ch = chores.find(c=>c.id===slot.choreId);
-            const nextM = rotNext ? memberById(rotNext[i]?.memberId) : null;
-            return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--board-bg2);border-radius:10px;">
-              <div style="width:10px;height:10px;border-radius:50%;background:${m?.color||'#ccc'};flex:none;"></div>
-              <div style="flex:1;">
-                <div style="font-size:13px;font-weight:600;">${escapeHtml(m?.name||'?')}</div>
-                <div style="font-size:11px;color:var(--ink-soft);">${escapeHtml(slot.label)} — ${escapeHtml(ch?.title||slot.label)}</div>
-              </div>
-              ${nextM?`<div style="font-size:10px;color:var(--ink-soft);text-align:right;">Next:<br><b>${escapeHtml(nextM.name)}</b></div>`:''}
-            </div>`;
-          }).join('')}
-        </div>
-        ${!isPhase2?`
-        <details style="margin-top:12px;">
-          <summary style="font-size:11px;color:var(--purple);cursor:pointer;">Preview Aug 3 rotation (6 people) ▾</summary>
-          <div style="margin-top:8px;display:flex;flex-direction:column;gap:6px;">
-            ${(()=>{
-              const p2r = state.choreRotation?.phase2;
-              if(!p2r) return '';
-              return ROTATION_SLOTS_P2.map((slot,i)=>{
-                const mid = p2r.startOrder[i];
-                const m2 = memberById(mid);
-                return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--board-bg2);border-radius:8px;">
-                  <div style="width:8px;height:8px;border-radius:50%;background:${m2?.color||'#ccc'};flex:none;"></div>
-                  <div style="font-size:12px;"><b>${escapeHtml(m2?.name||'?')}</b> — ${escapeHtml(slot.label)}</div>
-                </div>`;
-              }).join('');
-            })()}
-          </div>
-        </details>`:''}
-        <div style="font-size:10px;color:var(--ink-soft);margin-top:10px;">Everyone shifts down one slot each week · bottom wraps to top${isPhase2?' · Henry has moved out':''}</div>
-      </div>`;
-    })()}
     <div class="card">
       <h3>All chores</h3>
+      ${(()=>{
+        const isPhase2 = todayStr() >= PHASE2_START;
+        const daysToP2 = !isPhase2 ? Math.ceil((new Date(PHASE2_START+'T00:00:00') - new Date())/86400000) : 0;
+        return (!isPhase2 && daysToP2 <= 14)
+          ? `<div style="background:#fff8e6;border:1px solid #f0c060;border-radius:8px;padding:8px 10px;font-size:11px;color:#7a5000;margin-bottom:12px;">⚠️ <b>Aug 3 — ${daysToP2} day${daysToP2===1?'':'s'}:</b> Henry leaves, hallway chore drops. 6-person rotation kicks in automatically.</div>`
+          : '';
+      })()}
       <div class="chip-select" style="margin-bottom:12px;">
         ${subTabDef.filter(t=>t.key==='all'||t.key==='weekly'||t.key==='biweekly'||counts.other>0).map(t=>`
           <span class="chip ${choreSubTab===t.key?'active':''}" data-action="chore-subtab" data-subtab="${t.key}" style="${choreSubTab===t.key?'background:var(--green);border-color:transparent;color:#fff;':''}">${t.label} (${counts[t.key]})</span>
         `).join('')}
       </div>
-      ${filtered.length===0?`<div class="empty">${choreSubTab==='all'?'No chores yet — add one above.':'Nothing in this view yet.'}</div>`:filtered.map(ch=>choreRow(ch, getRotationByChore())).join('')}
+      ${filtered.length===0?`<div class="empty">${choreSubTab==='all'?'No chores yet — add one above.':'Nothing in this view yet.'}</div>`:filtered.map(ch=>choreRow(ch, getRotationByChore(), getRotationByChore(1))).join('')}
     </div>
   `;
 }
