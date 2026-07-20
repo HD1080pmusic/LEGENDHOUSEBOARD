@@ -200,6 +200,15 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
   cursor:pointer;background:#fff;color:var(--ink-soft);user-select:none; }
 .chip.active{border-color:transparent;color:#fff;}
 .chip:active{opacity:.75;}
+/* Split-chip excluded state — very deliberately greyed out so it's impossible to miss */
+.split-chip { transition: all .15s ease; position:relative; padding-left:10px; padding-right:10px; }
+.split-chip.active { opacity:1; }
+.split-chip:not(.active) {
+  background: #f0f0f0 !important; border-color: #ccc !important;
+  color: #aaa !important; text-decoration: line-through; opacity: .65;
+}
+.split-chip:not(.active)::after { content: ' ✕'; font-size:11px; color:#e05; font-style:normal; }
+
 .who-chip{display:flex;align-items:center;gap:7px;padding:6px 13px 6px 6px;}
 .who-chip-avatar{cursor:pointer;display:flex;}
 .who-chip-name{cursor:pointer;}
@@ -814,6 +823,31 @@ function normalizeState(){
   if(!Array.isArray(state.groceryItems)) state.groceryItems = [];
   if(!Array.isArray(state.xpLog)) state.xpLog = [];
   if(!Array.isArray(state.weeklyScorecard)) state.weeklyScorecard = [];
+  // Seed the global rotation config if this is an existing house that doesn't have it yet
+  if(!state.choreRotation){
+    state.choreRotation = {
+      anchorDate: '2026-07-20',
+      startOrder: ['kaitr001','ryanr001','shayla01','0f1r5fjj','chrisr01','henryr01','jimmyr01'],
+    };
+  }
+  // Seed phase2 (Aug 3 transition) if missing from older saves
+  if(state.choreRotation && !state.choreRotation.phase2){
+    state.choreRotation.phase2 = {
+      startDate:  '2026-08-03',
+      anchorDate: '2026-08-03',
+      startOrder: ['jimmyr01','kaitr001','ryanr001','shayla01','0f1r5fjj','chrisr01'],
+    };
+  }
+  // Add biweekly chores if they don't exist yet
+  const hasSweep = state.chores.some(c=>c.id==='sweep01');
+  if(!hasSweep){
+    state.chores.push(
+      { id:'sweep01', type:'rotating', title:'Sweeping, vacuuming & mopping',
+        rotation:{ intervalWeeks:2, anchorDate:'2026-08-03', turns:[['jimmyr01','kaitr001','ryanr001'],['shayla01','0f1r5fjj','chrisr01']] }, doneForPeriod:null },
+      { id:'kitch01', type:'rotating', title:'Kitchen island & fridge cleanup',
+        rotation:{ intervalWeeks:2, anchorDate:'2026-08-03', turns:[['shayla01','0f1r5fjj','chrisr01'],['jimmyr01','kaitr001','ryanr001']] }, doneForPeriod:null }
+    );
+  }
   state.members.forEach(m=>{ if(typeof m.hidden !== 'boolean') m.hidden = false; });
   state.members.forEach(m=>{ if(typeof m.lastSeenLevel !== 'number') m.lastSeenLevel = levelInfo(memberXP(m.id).total).level; });
   // one-time migration of the old flat-rate logs into the unified, source-tagged xpLog
@@ -1036,17 +1070,28 @@ const RESTORED_STATE = {
   ],
   chores: [
     // Dishwasher — Kaitlin + HD on rotation from June 29 (week of Jun 29–Jul 5)
-    { id:'gx6cz5xb', type:'rotating', title:'Empty dish dryer (daily, in pairs)',
-      rotation:{ intervalWeeks:1, anchorDate:'2026-06-29', turns:[['kaitr001','0f1r5fjj'],['ryanr001','jimmyr01']] }, doneForPeriod:null },
-    // Trash — Ryan + Jimmy
+    // Dish dryer — Shayla (fixed this week)
+    { id:'gx6cz5xb', type:'fixed', title:'Empty dish dryer (daily)', assignee:'shayla01', frequency:'weekly', dueDate:'2026-07-20', done:false },
+    // Trash — Kaitlin+HD this week (Jul 20), Ryan+Jimmy next week
     { id:'wazxhmic', type:'rotating', title:'Empty trash & take out bins (Thursday night, in pairs)',
-      rotation:{ intervalWeeks:1, anchorDate:'2026-07-02', turns:[['ryanr001','jimmyr01'],['kaitr001','0f1r5fjj']] }, doneForPeriod:null },
-    // Microwave & airfryer — Christi
-    { id:'0876gm85', type:'fixed', title:'Clean air fryer & microwave',                    assignee:'chrisr01', frequency:'weekly', dueDate:'2026-07-06', done:false },
-    // Shoes, towels & laundry — Shayla
-    { id:'lcmmzgcq', type:'fixed', title:'Front door & shoe organization + towel restock & laundry', assignee:'shayla01', frequency:'weekly', dueDate:'2026-07-06', done:false },
-    // Hallway — henry
-    { id:'hallwy01', type:'fixed', title:'Hallway clean-up',                               assignee:'henryr01', frequency:'weekly', dueDate:'2026-07-06', done:false },
+      rotation:{ intervalWeeks:1, anchorDate:'2026-07-20', turns:[['kaitr001','0f1r5fjj'],['ryanr001','jimmyr01']] }, doneForPeriod:null },
+    // Microwave & airfryer — Ryan
+    { id:'0876gm85', type:'fixed', title:'Clean air fryer & microwave',                    assignee:'ryanr001', frequency:'weekly', dueDate:'2026-07-20', done:false },
+    // Shoes, towels & laundry — rotated to Christi this week (was Shayla)
+    { id:'lcmmzgcq', type:'fixed', title:'Front door & shoe organization + towel restock & laundry', assignee:'chrisr01', frequency:'weekly', dueDate:'2026-07-20', done:false },
+    // Hallway — Henry
+    { id:'hallwy01', type:'fixed', title:'Hallway clean-up',                               assignee:'henryr01', frequency:'weekly', dueDate:'2026-07-20', done:false },
+    // ── Biweekly chores starting Aug 3 (6 people split into 2 groups of 3) ──────────
+    // Sweeping, vacuuming & mopping — 3 people per biweek, groups alternate
+    { id:'sweep01', type:'rotating', title:'Sweeping, vacuuming & mopping',
+      rotation:{ intervalWeeks:2, anchorDate:'2026-08-03',
+        turns:[['jimmyr01','kaitr001','ryanr001'],['shayla01','0f1r5fjj','chrisr01']] },
+      doneForPeriod:null },
+    // Kitchen island & fridge cleanup — the other 3 do this each biweek
+    { id:'kitch01', type:'rotating', title:'Kitchen island & fridge cleanup',
+      rotation:{ intervalWeeks:2, anchorDate:'2026-08-03',
+        turns:[['shayla01','0f1r5fjj','chrisr01'],['jimmyr01','kaitr001','ryanr001']] },
+      doneForPeriod:null },
   ],
   xpLog: [
     // Kaitlin — Lv 2 (30 XP): 5×pet_feed care actions + 1 chore
@@ -1087,6 +1132,19 @@ const RESTORED_STATE = {
   ],
   events:[], reminders:[], expenses:[], dayPhotos:{}, houseRules:[], groceryItems:[],
   completionLog:[], taskAssignLog:[], weeklyScorecard:[],
+  // 7-slot round-robin: everyone shifts down 1 each week, bottom wraps to top
+  choreRotation: {
+    anchorDate: '2026-07-20',
+    startOrder: ['kaitr001','ryanr001','shayla01','0f1r5fjj','chrisr01','henryr01','jimmyr01'],
+    //  slot:       Trash1     Microwave  DishDry1  Trash2     Shoes      Hallway    DishDry2
+    // Aug 3: Henry leaves, hallway removed → 6-person rotation picks up naturally
+    phase2: {
+      startDate:   '2026-08-03',
+      anchorDate:  '2026-08-03',
+      startOrder:  ['jimmyr01','kaitr001','ryanr001','shayla01','0f1r5fjj','chrisr01'],
+      //  slot:      Trash1     Microwave  DishDry1  Trash2     Shoes      DishDry2
+    },
+  },
   importedDefaultChores:true, mergedFrontDoorTowel:true, mascotsAutoAssigned:true, notifSeen:{},
 };
 async function restoreHouseData(){
@@ -1158,6 +1216,34 @@ function devAddCarePoint(memberId){
   ensurePet(m);
   state.xpLog.push({ id:uid(), memberId, source:'pet_feed', label:'[dev] +1 care point', xp:2, baseXp:2, multiplier:1, meta:'dev', weekKey:isoWeekKey(new Date()), at:Date.now() });
   devSave();
+}
+function devSetStreak(memberId, days){
+  const m = memberById(memberId); if(!m) return;
+  ensurePet(m);
+  const d = Number(days);
+  if(isNaN(d) || d < 0){ alert('Enter a number 0 or higher.'); return; }
+  m.pet.streak = d;
+  m.pet.streakDate = d > 0 ? new Date().toDateString() : null;
+  devSave();
+}
+// One-tap fix for the chore week — corrects the anchor date sync bug and rotates fixed chore assignees
+// so nobody repeats the same chore two weeks running.
+function devFixChoreWeek(){
+  if(!confirm('Fix this week\'s chore assignments?\n\n• Dish dryer → Shayla\n• Trash → Kaitlin + HD (rotating with Ryan+Jimmy)\n• Microwave → Ryan\n• Shoes/towels → Christi\n• Hallway → Henry\n\nThis saves to Firebase immediately.')) return;
+  const fixes = {
+    'gx6cz5xb': { type:'fixed', assignee:'shayla01', frequency:'weekly', dueDate:'2026-07-20', done:false },
+    'wazxhmic': { type:'rotating', rotation:{ intervalWeeks:1, anchorDate:'2026-07-20', turns:[['kaitr001','0f1r5fjj'],['ryanr001','jimmyr01']] }, doneForPeriod:null },
+    '0876gm85': { assignee:'ryanr001', dueDate:'2026-07-20', done:false },
+    'lcmmzgcq': { assignee:'chrisr01', dueDate:'2026-07-20', done:false },
+    'hallwy01': { assignee:'henryr01', dueDate:'2026-07-20', done:false },
+  };
+  state.chores.forEach(ch=>{
+    const fix = fixes[ch.id];
+    if(!fix) return;
+    Object.assign(ch, fix);
+  });
+  devSave();
+  alert('✅ Chores updated! Shayla=dish dryer, Ryan=microwave, Henry=hallway.');
 }
 
 // ── 3. mess & sick ─────────────────────────────────────────────
@@ -1359,6 +1445,12 @@ function renderDevPanelHTML(){
       <button class="dev-btn dev-btn-sm" data-dev="addcarepoint">+1 Care Point</button>
       <span style="font-size:10px;color:#999;align-self:center;">Each tap adds one. Egg hatches at ${EVOS_TO_HATCH}.</span>
     </div>
+    <label class="dev-label">Care streak — current: <strong>${memberById(devPetTarget||'')?.pet?.streak||0} day(s)</strong></label>
+    <div class="dev-row">
+      <input class="dev-input" id="devStreakDays" type="number" min="0" max="365" value="${memberById(devPetTarget||'')?.pet?.streak||0}" style="width:70px;">
+      <span style="font-size:12px;color:#666;align-self:center;">days</span>
+      <button class="dev-btn dev-btn-primary" data-dev="setstreak">Set Streak</button>
+    </div>
 
     <label class="dev-label">Force stats</label>
     <div class="dev-grid4">
@@ -1416,6 +1508,9 @@ function renderDevPanelHTML(){
       <button class="dev-btn" data-dev="exportjson">📤 Export JSON Backup</button>
       <button class="dev-btn" data-dev="forcerestore">🔄 Force Restore Dialog</button>
     </div>
+    <div class="dev-row" style="margin-top:8px;">
+      <button class="dev-btn dev-btn-primary" data-dev="fixchoreweek" style="width:100%;">🔁 Fix This Week's Chores (Jul 20)</button>
+    </div>
     <label class="dev-label" style="margin-top:10px;">Wipe a member</label>
     <div class="dev-row">
       <select class="dev-select" id="devWipeMember" style="flex:1;">
@@ -1458,6 +1553,7 @@ function attachDevHandlers(){
       else if(act==='curesick')      devCureSick(pid);
       else if(act==='skipcooldown')  devSkipCooldown(pid);
       else if(act==='addcarepoint')  devAddCarePoint(pid);
+      else if(act==='setstreak')     devSetStreak(pid, el('devStreakDays')?.value??0);
       else if(act==='resettoegg')    devResetToEgg(pid);
       else if(act==='fastforward')   devFastForward(el('devFFDays')?.value||1);
       else if(act==='adjustxp')      devAdjustXP(xid, el('devXpAmount')?.value||0);
@@ -1465,6 +1561,7 @@ function attachDevHandlers(){
       else if(act==='triggerlevelup') devTriggerLevelUp(xid);
       else if(act==='exportjson')    devExportJSON();
       else if(act==='forcerestore')  devForceRestore();
+      else if(act==='fixchoreweek')  devFixChoreWeek();
       else if(act==='wipemember')    devWipeMember(wid);
     };
   });
@@ -2086,6 +2183,77 @@ function weeksBetween(a,b){
   const ms = new Date(b+'T00:00:00') - new Date(a+'T00:00:00');
   return Math.floor(ms/(7*86400000));
 }
+
+/* ─── Global round-robin chore rotation ─────────────────────────────────────
+   7 slots, 7 housemates, everyone shifts down one slot each week.
+   The person at the bottom wraps back to slot 0 (Trash 1) next week.
+   Trash and Dish Dryer each appear twice (two people share them simultaneously).
+
+   Slot order (user-defined):
+   0 → Trash 1      (chore: wazxhmic)
+   1 → Microwave    (chore: 0876gm85)
+   2 → Dish Dryer 1 (chore: gx6cz5xb)
+   3 → Trash 2      (chore: wazxhmic)
+   4 → Shoes/Towels (chore: lcmmzgcq)
+   5 → Hallway      (chore: hallwy01)
+   6 → Dish Dryer 2 (chore: gx6cz5xb)
+─────────────────────────────────────────────────────────────────────────── */
+// Phase 1: Jul 20 – Aug 2 — 7 people, 7 slots
+const ROTATION_SLOTS = [
+  { label:'Trash 1',              choreId:'wazxhmic' },
+  { label:'Microwave & Airfryer', choreId:'0876gm85' },
+  { label:'Dish Dryer 1',        choreId:'gx6cz5xb' },
+  { label:'Trash 2',             choreId:'wazxhmic' },
+  { label:'Shoes & Towels',      choreId:'lcmmzgcq' },
+  { label:'Hallway',             choreId:'hallwy01'  },
+  { label:'Dish Dryer 2',        choreId:'gx6cz5xb' },
+];
+// Phase 2: Aug 3+ — 6 people, 6 slots (Henry gone, hallway removed)
+const ROTATION_SLOTS_P2 = [
+  { label:'Trash 1',              choreId:'wazxhmic' },
+  { label:'Microwave & Airfryer', choreId:'0876gm85' },
+  { label:'Dish Dryer 1',        choreId:'gx6cz5xb' },
+  { label:'Trash 2',             choreId:'wazxhmic' },
+  { label:'Shoes & Towels',      choreId:'lcmmzgcq' },
+  { label:'Dish Dryer 2',        choreId:'gx6cz5xb' },
+];
+const PHASE2_START = '2026-08-03';
+
+function addWeeks(dateStr, n){
+  const d = new Date(dateStr+'T00:00:00');
+  d.setDate(d.getDate() + n*7);
+  return isoDate(d);
+}
+function rotationPhaseFor(dateStr){
+  const r = state.choreRotation;
+  if(!r) return null;
+  if(dateStr >= PHASE2_START && r.phase2) return { cfg: r.phase2, slots: ROTATION_SLOTS_P2 };
+  return { cfg: r, slots: ROTATION_SLOTS };
+}
+function getCurrentRotation(weekOffset=0){
+  const r = state.choreRotation;
+  if(!r) return null;
+  const targetDate = weekOffset===0 ? todayStr() : addWeeks(todayStr(), weekOffset);
+  const phase = rotationPhaseFor(targetDate);
+  if(!phase || !phase.cfg.startOrder || !phase.cfg.anchorDate) return null;
+  const week = Math.max(0, weeksBetween(phase.cfg.anchorDate, targetDate));
+  const n = phase.cfg.startOrder.length;
+  return phase.slots.map((slot,i)=>({
+    ...slot,
+    memberId: phase.cfg.startOrder[((i - week) % n + n) % n]
+  }));
+}
+function getRotationByChore(weekOffset=0){
+  const rot = getCurrentRotation(weekOffset);
+  if(!rot) return null;
+  const map = {};
+  rot.forEach(({choreId, memberId})=>{
+    if(!map[choreId]) map[choreId] = [];
+    map[choreId].push(memberId);
+  });
+  return map;
+}
+
 function isoDate(d){ return d.toISOString().slice(0,10); }
 function isoWeekKey(d){
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -2335,10 +2503,10 @@ function streakTierFor(weeks){
    until it's fed/played with/healed again. */
 const PET_HUNGER_DECAY_PER_HR   = 100/24;   // empties over ~24h without feeding
 const PET_HAPPY_DECAY_PER_HR    = 100/28;   // empties over ~28h without play/pets
-const PET_ENERGY_DRAIN_PER_HR   = 100/16;   // tires out over ~16 awake hours
+const PET_ENERGY_DRAIN_PER_HR   = 100/48;   // tires out over ~48h awake (suits 1-3x daily checks)
 const PET_ENERGY_RECOVER_PER_HR = 100/8;    // fully recovers over ~8h asleep
-const PET_HEALTH_DECAY_PER_HR   = 100/30;   // crashes over ~30h of sustained neglect
-const PET_HEALTH_REGEN_PER_HR   = 100/48;   // slowly self-heals over ~2 days if well cared for
+const PET_HEALTH_DECAY_PER_HR   = 100/72;   // crashes over ~72h of sustained neglect
+const PET_HEALTH_REGEN_PER_HR   = 100/24;   // self-heals over ~1 day if well cared for
 const PET_MESS_THRESHOLD_HRS    = 14;       // a mess appears if not fed/cleaned in ~14h
 const EVOS_TO_HATCH = 5;
 const clampPct = v => Math.max(0, Math.min(100, v));
@@ -3067,10 +3235,13 @@ function choreInvolvesMember(ch, memberId){
   }
   return false;
 }
-function choreRow(ch){
+function choreRow(ch, rotationMap){
   const done = isChoreDone(ch);
   const eff = effectiveDate(ch);
   const overdue = !done && eff < todayStr();
+  // Override displayed assignees with rotation-computed ones if available
+  const rotMembers = rotationMap && rotationMap[ch.id];
+
   if(ch.type==='linked'){
     const plan = state.weeklyRotation;
     if(!plan){
@@ -3101,7 +3272,8 @@ function choreRow(ch){
   }
   if(ch.type==='rotating'){
     const st = rotationStatus(ch);
-    if(st.needsSetup){
+    const displayMembers = rotMembers || (st.needsSetup ? [] : st.turnMembers);
+    if(!rotMembers && st.needsSetup){
       return `
       <div class="row">
         <div class="check" style="opacity:.3;cursor:default;"></div>
@@ -3114,9 +3286,11 @@ function choreRow(ch){
         <button class="icon-btn" data-action="chore-menu" data-id="${ch.id}" title="More actions">⋯</button>
       </div>`;
     }
-    const avatarsHtml = st.turnMembers.map(id=>avatarHtml(memberById(id),'sm')).join('');
-    const names = st.turnMembers.map(id=>memberById(id)?.name||'?').join(' & ');
-    const subtitle = `${names} · every ${ch.rotation.intervalWeeks===1?'week':ch.rotation.intervalWeeks+' wks'}${ch.draftRotation?' · 📋 next rotation planned':''}`;
+    const avatarsHtml = displayMembers.map(id=>avatarHtml(memberById(id),'sm')).join('');
+    const names = displayMembers.map(id=>memberById(id)?.name||'?').join(' & ');
+    const subtitle = rotMembers
+      ? `${names} · round-robin rotation`
+      : `${names} · every ${ch.rotation.intervalWeeks===1?'week':ch.rotation.intervalWeeks+' wks'}${ch.draftRotation?' · 📋 next rotation planned':''}`;
     return `
     <div class="row">
       <div class="check ${done?'done':''}" data-action="toggle-chore" data-id="${ch.id}">${done?'✓':''}</div>
@@ -3129,14 +3303,17 @@ function choreRow(ch){
       <button class="icon-btn" data-action="chore-menu" data-id="${ch.id}" title="More actions">⋯</button>
     </div>`;
   }
-  const assignee = memberById(ch.assignee);
+  // Fixed chore — use rotation-computed people if available
+  const assigneeIds = rotMembers || (ch.assignee ? [ch.assignee] : []);
+  const assigneeNames = assigneeIds.map(id=>memberById(id)?.name||'?').join(' & ');
+  const assigneeAvatars = assigneeIds.map(id=>avatarHtml(memberById(id),'sm')).join('');
   return `
   <div class="row">
     <div class="check ${done?'done':''}" data-action="toggle-chore" data-id="${ch.id}">${done?'✓':''}</div>
-    ${avatarHtml(assignee,'sm')}
+    ${assigneeAvatars||'<div class="avatar sm" style="background:#9AA0AC">?</div>'}
     <div class="row-main">
       <div class="row-title">${escapeHtml(ch.title)}</div>
-      <div class="row-sub">${assignee?escapeHtml(assignee.name):'Unassigned'} · ${ch.frequency}</div>
+      <div class="row-sub">${assigneeNames||'Unassigned'} · ${rotMembers?'round-robin rotation':ch.frequency}</div>
     </div>
     <span class="tag ${overdue?'overdue':(eff===todayStr()?'today':'')}">${fmtDate(eff)}</span>
     <button class="icon-btn" data-action="chore-menu" data-id="${ch.id}" title="More actions">⋯</button>
@@ -3725,6 +3902,58 @@ function renderChores(){
       <button class="btn ghost" data-action="open-quick-task" style="margin-left:8px;">📌 Assign a task</button>
       <button class="btn ghost" data-action="open-weekly-rotation" style="margin-left:8px;">${state.weeklyRotation?'Edit weekly rotation':'Set up weekly rotation (no overlaps)'}</button>
     </div>
+    ${(()=>{
+      const rot = getCurrentRotation();
+      const rotNext = getCurrentRotation(1);
+      if(!rot) return '';
+      const chores = state.chores;
+      const isPhase2 = todayStr() >= PHASE2_START;
+      const phaseAnchor = isPhase2 ? (state.choreRotation.phase2?.anchorDate||PHASE2_START) : state.choreRotation.anchorDate;
+      const weekNum = Math.max(0, weeksBetween(phaseAnchor, todayStr()));
+      const daysToP2 = !isPhase2 ? Math.ceil((new Date(PHASE2_START+'T00:00:00') - new Date())/86400000) : 0;
+      return `
+      <div class="card" style="border-left:3px solid var(--purple);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <h3 style="margin:0;">🔄 This Week's Rotation${isPhase2?' (6-person)':''}</h3>
+          <span style="font-family:var(--pixel-font);font-size:9px;color:var(--ink-soft);">Week ${weekNum+1}</span>
+        </div>
+        ${!isPhase2&&daysToP2<=14?`<div style="background:#fff8e6;border:1px solid #f0c060;border-radius:8px;padding:8px 10px;font-size:11px;color:#7a5000;margin-bottom:10px;">⚠️ <b>Aug 3 transition in ${daysToP2} day${daysToP2===1?'':'s'}:</b> Henry leaves, hallway removed — 6-person rotation begins automatically.</div>`:''}
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          ${rot.map((slot,i)=>{
+            const m = memberById(slot.memberId);
+            const ch = chores.find(c=>c.id===slot.choreId);
+            const nextM = rotNext ? memberById(rotNext[i]?.memberId) : null;
+            return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--board-bg2);border-radius:10px;">
+              <div style="width:10px;height:10px;border-radius:50%;background:${m?.color||'#ccc'};flex:none;"></div>
+              <div style="flex:1;">
+                <div style="font-size:13px;font-weight:600;">${escapeHtml(m?.name||'?')}</div>
+                <div style="font-size:11px;color:var(--ink-soft);">${escapeHtml(slot.label)} — ${escapeHtml(ch?.title||slot.label)}</div>
+              </div>
+              ${nextM?`<div style="font-size:10px;color:var(--ink-soft);text-align:right;">Next:<br><b>${escapeHtml(nextM.name)}</b></div>`:''}
+            </div>`;
+          }).join('')}
+        </div>
+        ${!isPhase2?`
+        <details style="margin-top:12px;">
+          <summary style="font-size:11px;color:var(--purple);cursor:pointer;">Preview Aug 3 rotation (6 people) ▾</summary>
+          <div style="margin-top:8px;display:flex;flex-direction:column;gap:6px;">
+            ${(()=>{
+              const p2r = state.choreRotation?.phase2;
+              if(!p2r) return '';
+              return ROTATION_SLOTS_P2.map((slot,i)=>{
+                const mid = p2r.startOrder[i];
+                const m2 = memberById(mid);
+                return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--board-bg2);border-radius:8px;">
+                  <div style="width:8px;height:8px;border-radius:50%;background:${m2?.color||'#ccc'};flex:none;"></div>
+                  <div style="font-size:12px;"><b>${escapeHtml(m2?.name||'?')}</b> — ${escapeHtml(slot.label)}</div>
+                </div>`;
+              }).join('');
+            })()}
+          </div>
+        </details>`:''}
+        <div style="font-size:10px;color:var(--ink-soft);margin-top:10px;">Everyone shifts down one slot each week · bottom wraps to top${isPhase2?' · Henry has moved out':''}</div>
+      </div>`;
+    })()}
     <div class="card">
       <h3>All chores</h3>
       <div class="chip-select" style="margin-bottom:12px;">
@@ -3732,7 +3961,7 @@ function renderChores(){
           <span class="chip ${choreSubTab===t.key?'active':''}" data-action="chore-subtab" data-subtab="${t.key}" style="${choreSubTab===t.key?'background:var(--green);border-color:transparent;color:#fff;':''}">${t.label} (${counts[t.key]})</span>
         `).join('')}
       </div>
-      ${filtered.length===0?`<div class="empty">${choreSubTab==='all'?'No chores yet — add one above.':'Nothing in this view yet.'}</div>`:filtered.map(choreRow).join('')}
+      ${filtered.length===0?`<div class="empty">${choreSubTab==='all'?'No chores yet — add one above.':'Nothing in this view yet.'}</div>`:filtered.map(ch=>choreRow(ch, getRotationByChore())).join('')}
     </div>
   `;
 }
@@ -3892,6 +4121,16 @@ function openChoreModal(existing){
     } else {
       const turns = modalTurns.filter(t=>t.length>0);
       if(turns.length===0){ showError('Add at least one person to at least one turn.'); return; }
+      // Anti-repeat check: warn if any member appears in consecutive turns (including wrap-around last→first)
+      const repeaters = [];
+      for(let i=0; i<turns.length; i++){
+        const next = turns[(i+1) % turns.length];
+        const overlap = turns[i].filter(id=> next.includes(id));
+        overlap.forEach(id=>{ const n=memberById(id)?.name||id; if(!repeaters.includes(n)) repeaters.push(n); });
+      }
+      if(repeaters.length>0){
+        if(!confirm(`⚠️ Same chore two weeks in a row!\n\n${repeaters.join(', ')} would be assigned this chore in consecutive turns.\n\nSave anyway?`)) return;
+      }
       built = {
         type:'rotating', title,
         rotation:{ intervalWeeks: parseInt(wrap.querySelector('#mInterval').value,10), anchorDate: wrap.querySelector('#mAnchor').value || todayStr(), turns },
@@ -4436,7 +4675,7 @@ function renderReminders(){
 function computeBalances(){
   const bal = {};
   state.members.forEach(m=>bal[m.id]=0);
-  state.expenses.filter(ex=>!ex.removed).forEach(ex=>{
+  state.expenses.filter(ex=>!ex.removed && !ex.settled).forEach(ex=>{
     const splitN = ex.splitAmong.length || 1;
     const share = ex.amount / splitN;
     ex.splitAmong.forEach(id=>{ bal[id] = (bal[id]||0) - share; });
@@ -4465,17 +4704,82 @@ function settlementPlan(bal){
 function expenseRow(ex){
   const payer = memberById(ex.paidBy);
   const canManage = !!currentUserId && currentUserId===ex.paidBy;
-  return `<div class="row">
+  const settledBadge = ex.settled
+    ? `<span class="tag event" style="background:#d4f7e0;color:#1a7a3e;border:1px solid #a3e6b8;font-size:9px;">✓ Settled</span>`
+    : '';
+  const receiptThumb = ex.settled && ex.receiptImage
+    ? `<img src="${ex.receiptImage}" style="width:32px;height:32px;border-radius:6px;object-fit:cover;cursor:pointer;border:1px solid #ddd;" data-action="view-receipt" data-id="${ex.id}" title="View receipt">`
+    : '';
+  return `<div class="row" style="${ex.settled?'opacity:.75;':''}">
     ${avatarHtml(payer,'sm')}
     <div class="row-main">
-      <div class="row-title">${escapeHtml(ex.description)}</div>
+      <div class="row-title">${escapeHtml(ex.description)} ${settledBadge}</div>
       <div class="row-sub">${payer?escapeHtml(payer.name):'?'} paid · split ${ex.splitAmong.length} ways</div>
     </div>
+    ${receiptThumb}
     <span class="balance-amt">$${ex.amount.toFixed(2)}</span>
-    ${canManage
+    ${!ex.settled && canManage
+      ? `<button class="icon-btn" data-action="settle-expense" data-id="${ex.id}" title="Mark as settled (all paid back)">✓</button>`
+      : ''}
+    ${!ex.settled && canManage
       ? `<button class="icon-btn" data-action="remove-expense" data-id="${ex.id}" title="Remove">✕</button>`
-      : `<button class="icon-btn" disabled title="Only ${payer?escapeHtml(payer.name):'the person paid'} can remove this" style="opacity:.3;cursor:default;">✕</button>`}
+      : (!ex.settled ? `<button class="icon-btn" disabled title="Only ${payer?escapeHtml(payer.name):'the person paid'} can remove this" style="opacity:.3;cursor:default;">✕</button>` : '')}
   </div>`;
+}
+// Open settle modal — lets payer mark expense as fully settled and optionally attach a receipt photo
+function openSettleModal(expenseId){
+  const ex = state.expenses.find(e=>e.id===expenseId); if(!ex) return;
+  const wrap = document.createElement('div'); wrap.className='overlay';
+  wrap.innerHTML = `
+    <div class="modal">
+      <h3>✓ Mark as Settled</h3>
+      <p style="font-size:13px;color:var(--ink-soft);">"${escapeHtml(ex.description)}" — $${ex.amount.toFixed(2)}<br>
+      Marking this settled removes it from outstanding balances.</p>
+      <div style="margin:14px 0;">
+        <label style="font-size:12px;color:var(--ink-soft);">Attach payment screenshot (optional)</label>
+        <input type="file" id="receiptFile" accept="image/*" style="margin-top:6px;width:100%;font-size:12px;">
+        <div id="receiptPreview" style="margin-top:8px;"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="cancelSettle">Cancel</button>
+        <button class="btn" id="confirmSettle" style="background:var(--green);">Mark Settled</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('#cancelSettle').onclick = ()=> document.body.removeChild(wrap);
+  // preview receipt image
+  wrap.querySelector('#receiptFile').onchange = async (e)=>{
+    const file = e.target.files[0]; if(!file) return;
+    const preview = wrap.querySelector('#receiptPreview');
+    preview.innerHTML = '<span style="font-size:11px;color:var(--ink-soft);">Compressing…</span>';
+    try {
+      const b64 = await compressImage(file, 800, 0.75);
+      preview.innerHTML = `<img src="${b64}" style="max-width:100%;max-height:150px;border-radius:8px;margin-top:4px;">`;
+      preview.dataset.b64 = b64;
+    } catch(err){ preview.innerHTML = '<span style="color:red;font-size:11px;">Could not load image.</span>'; }
+  };
+  wrap.querySelector('#confirmSettle').onclick = ()=>{
+    ex.settled = true;
+    ex.settledAt = Date.now();
+    ex.settledBy = currentUserId;
+    const preview = wrap.querySelector('#receiptPreview');
+    if(preview.dataset.b64) ex.receiptImage = preview.dataset.b64;
+    document.body.removeChild(wrap);
+    saveState(); render();
+  };
+}
+function viewReceiptModal(expenseId){
+  const ex = state.expenses.find(e=>e.id===expenseId); if(!ex || !ex.receiptImage) return;
+  const wrap = document.createElement('div'); wrap.className='overlay';
+  wrap.innerHTML = `<div class="modal" style="text-align:center;">
+    <h3>Payment Receipt</h3>
+    <p style="font-size:12px;color:var(--ink-soft);">${escapeHtml(ex.description)} — $${ex.amount.toFixed(2)}</p>
+    <img src="${ex.receiptImage}" style="max-width:100%;border-radius:10px;margin:10px 0;">
+    <div class="modal-actions"><button class="btn ghost" id="closeReceipt">Close</button></div>
+  </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('#closeReceipt').onclick = ()=> document.body.removeChild(wrap);
+  wrap.onclick = e=>{ if(e.target===wrap) document.body.removeChild(wrap); };
 }
 function backlogRow(ex){
   const payer = memberById(ex.paidBy);
@@ -4512,8 +4816,9 @@ function renderBills(){
         <div>
           <label>Split among</label>
           <div class="chip-select" id="splitChips">
-            ${visibleMembers().map(m=>`<div class="chip active" data-id="${m.id}" style="background:${m.color};border-color:${m.color}">${escapeHtml(m.name)}</div>`).join('')}
+            ${visibleMembers().map(m=>`<div class="chip split-chip active" data-id="${m.id}" style="background:${m.color};border-color:${m.color}">${escapeHtml(m.name)}</div>`).join('')}
           </div>
+          <div style="font-size:10px;color:var(--ink-soft);margin-top:4px;">Tap a name to exclude them from this split — crossed-out names won't owe a share.</div>
         </div>
       </div>
       <button class="btn" data-action="add-expense">Add expense</button>
@@ -4550,32 +4855,79 @@ function renderBills(){
 }
 
 /* ---------- HOUSE RULES & DOCS ---------- */
+let rulesSortMode = 'pinned'; // 'pinned' | 'recent'
+
 function renderRules(){
-  const sorted = [...(state.houseRules||[])].sort((a,b)=>b.updatedAt-a.updatedAt);
+  const rules = state.houseRules || [];
+  const pinned  = rules.filter(r=>r.pinned).sort((a,b)=>b.updatedAt-a.updatedAt);
+  const others  = rules.filter(r=>!r.pinned).sort((a,b)=>b.updatedAt-a.updatedAt);
+  const sorted  = rulesSortMode==='pinned' ? [...pinned,...others] : [...rules].sort((a,b)=>b.updatedAt-a.updatedAt);
   return `
     <div class="card">
-      <h3>House Rules & Docs</h3>
-      <p style="font-size:13px;color:var(--ink-soft);margin:-4px 0 10px;">Wifi password, landlord contact, quiet hours, move-out checklist — whatever everyone needs to find fast.</p>
+      <h3>House Rules &amp; Docs</h3>
+      <p style="font-size:13px;color:var(--ink-soft);margin:-4px 0 10px;">WiFi password, housemate contract, landlord contact, quiet hours — whatever everyone needs to find fast. Attach PDFs, images, or any file.</p>
       <button class="btn" data-action="open-rule-modal">+ Add a rule or doc</button>
     </div>
+    ${rules.length>0?`
+    <div style="display:flex;gap:8px;margin:0 0 12px;padding:0 2px;">
+      <button class="btn ghost" data-action="rules-sort" data-sort="pinned" style="flex:1;font-size:12px;${rulesSortMode==='pinned'?'border-color:var(--purple);color:var(--purple);': ''}">📌 Pinned first</button>
+      <button class="btn ghost" data-action="rules-sort" data-sort="recent" style="flex:1;font-size:12px;${rulesSortMode==='recent'?'border-color:var(--purple);color:var(--purple);': ''}">🕐 Most recent</button>
+    </div>`:''}
     ${sorted.length===0?`<div class="card"><div class="empty">Nothing posted yet.</div></div>`:sorted.map(ruleCard).join('')}
   `;
 }
+
 function ruleCard(rule){
   const author = memberById(rule.updatedBy);
+  const date   = rule.updatedAt ? new Date(rule.updatedAt).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}) : '';
+  const hasFile = !!(rule.fileData);
+  const isImage = hasFile && rule.fileType && rule.fileType.startsWith('image/');
+  const isPdf   = hasFile && rule.fileType === 'application/pdf';
+
+  let attachmentHtml = '';
+  if(isImage){
+    attachmentHtml = `<div style="margin-top:12px;"><img src="${rule.fileData}" style="max-width:100%;max-height:220px;border-radius:10px;object-fit:contain;cursor:pointer;border:1px solid var(--line);" data-action="view-rule-file" data-id="${rule.id}" title="Tap to view full size"></div>`;
+  } else if(hasFile){
+    const icon = isPdf ? '📄' : '📎';
+    attachmentHtml = `<div style="margin-top:10px;"><a href="${rule.fileData}" download="${escapeHtml(rule.fileName||'file')}" style="display:inline-flex;align-items:center;gap:6px;background:var(--board-bg2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--ink);text-decoration:none;">${icon} ${escapeHtml(rule.fileName||'Attachment')} — tap to download</a></div>`;
+  }
+
   return `
-  <div class="card" style="margin-bottom:12px;">
+  <div class="card rule-card" style="margin-bottom:12px;${rule.pinned?'border-left:3px solid var(--purple);':''}" >
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-      <div style="font-weight:700;font-family:'Kalam',cursive;font-size:17px;">${escapeHtml(rule.title)}</div>
+      <div style="font-weight:700;font-family:'Kalam',cursive;font-size:17px;">${rule.pinned?'📌 ':''  }${escapeHtml(rule.title)}</div>
       <div style="display:flex;gap:2px;flex:none;">
+        <button class="icon-btn" data-action="toggle-pin-rule" data-id="${rule.id}" title="${rule.pinned?'Unpin':'Pin to top'}" style="${rule.pinned?'color:var(--purple);':''  }">📌</button>
         <button class="icon-btn" data-action="edit-rule" data-id="${rule.id}">✎</button>
         <button class="icon-btn" data-action="delete-rule" data-id="${rule.id}">✕</button>
       </div>
     </div>
-    <div style="font-size:14px;white-space:pre-wrap;margin-top:6px;line-height:1.5;">${escapeHtml(rule.content)}</div>
-    ${author?`<div style="font-size:11px;color:var(--ink-soft);margin-top:10px;">Updated by ${escapeHtml(author.name)}</div>`:''}
+    ${rule.content?`<div style="font-size:14px;white-space:pre-wrap;margin-top:6px;line-height:1.5;">${escapeHtml(rule.content)}</div>`:''}
+    ${attachmentHtml}
+    <div style="font-size:11px;color:var(--ink-soft);margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+      ${author?`<span>By ${escapeHtml(author.name)}</span>`:''}
+      ${date?`<span>${date}</span>`:''}
+    </div>
   </div>`;
 }
+
+function viewRuleFileModal(ruleId){
+  const rule = (state.houseRules||[]).find(r=>r.id===ruleId);
+  if(!rule || !rule.fileData) return;
+  const wrap = document.createElement('div'); wrap.className='overlay';
+  wrap.innerHTML = `<div class="modal" style="text-align:center;max-width:90vw;width:340px;">
+    <h3>${escapeHtml(rule.title)}</h3>
+    <img src="${rule.fileData}" style="max-width:100%;max-height:70vh;border-radius:10px;margin:10px 0;">
+    <div class="modal-actions">
+      <a href="${rule.fileData}" download="${escapeHtml(rule.fileName||'image')}" class="btn ghost">⬇ Download</a>
+      <button class="btn ghost" id="closeFileModal">Close</button>
+    </div>
+  </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('#closeFileModal').onclick = ()=> document.body.removeChild(wrap);
+  wrap.onclick = e=>{ if(e.target===wrap) document.body.removeChild(wrap); };
+}
+
 function openRuleModal(existing){
   const isEdit = !!existing;
   const wrap = document.createElement('div');
@@ -4584,8 +4936,15 @@ function openRuleModal(existing){
     <div class="modal">
       <h3>${isEdit?'Edit':'Add'} a rule or doc</h3>
       <div class="form-grid">
-        <div><label>Title</label><input id="ruleTitle" placeholder="e.g. WiFi password" value="${isEdit?escapeHtml(existing.title):''}"></div>
-        <div><label>Details</label><textarea id="ruleContent" rows="5" placeholder="e.g. Network: HouseNet — Password: ...">${isEdit?escapeHtml(existing.content):''}</textarea></div>
+        <div><label>Title</label><input id="ruleTitle" placeholder="e.g. Housemate Contract" value="${isEdit?escapeHtml(existing.title):''}"></div>
+        <div><label>Details <span style="font-weight:400;color:var(--ink-soft);font-size:11px;">(optional if attaching a file)</span></label>
+          <textarea id="ruleContent" rows="4" placeholder="e.g. Network: HouseNet — Password: ...">${isEdit?escapeHtml(existing.content||''): ''}</textarea></div>
+        <div>
+          <label>Attach a file <span style="font-weight:400;color:var(--ink-soft);font-size:11px;">PDF, image, or any file — up to ~4 MB</span></label>
+          <input type="file" id="ruleFile" accept="*/*" style="margin-top:6px;width:100%;font-size:12px;">
+          <div id="ruleFilePreview" style="margin-top:8px;">${isEdit&&existing.fileName?`<span style="font-size:12px;color:var(--ink-soft);">📎 Current: ${escapeHtml(existing.fileName)} <button id="clearAttachment" style="font-size:11px;background:none;border:none;color:var(--danger);cursor:pointer;">Remove</button></span>`:''}
+          </div>
+        </div>
       </div>
       <div id="ruleError" class="error-text" style="display:none;"></div>
       <div class="modal-actions">
@@ -4595,7 +4954,34 @@ function openRuleModal(existing){
       </div>
     </div>`;
   document.body.appendChild(wrap);
+
+  let pendingFile = null;
+  let clearExistingFile = false;
+
   wrap.querySelector('#cancelRule').onclick = ()=> document.body.removeChild(wrap);
+  const clearBtn = wrap.querySelector('#clearAttachment');
+  if(clearBtn) clearBtn.onclick = ()=>{ clearExistingFile=true; wrap.querySelector('#ruleFilePreview').innerHTML='<span style="font-size:11px;color:var(--ink-soft);">Attachment will be removed on save.</span>'; };
+
+  wrap.querySelector('#ruleFile').onchange = async e=>{
+    const file = e.target.files[0]; if(!file) return;
+    const preview = wrap.querySelector('#ruleFilePreview');
+    preview.innerHTML = '<span style="font-size:11px;color:var(--ink-soft);">Loading…</span>';
+    try{
+      let data;
+      if(file.type.startsWith('image/')){
+        data = await fileToResizedPhoto(file, 1200, 0.82);
+      } else {
+        data = await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onerror=rej; fr.onload=e=>res(e.target.result); fr.readAsDataURL(file); });
+      }
+      pendingFile = { data, name: file.name, type: file.type };
+      const icon = file.type.startsWith('image/') ? '🖼️' : file.type==='application/pdf' ? '📄' : '📎';
+      const sizeKb = Math.round(file.size/1024);
+      preview.innerHTML = `<span style="font-size:12px;color:var(--green);">${icon} ${escapeHtml(file.name)} (${sizeKb} KB) — ready</span>`;
+    } catch(err){
+      preview.innerHTML = '<span style="font-size:11px;color:var(--danger);">Could not read file. Try a smaller one.</span>';
+    }
+  };
+
   if(isEdit){
     wrap.querySelector('#deleteRuleBtn').onclick = ()=>{
       state.houseRules = (state.houseRules||[]).filter(r=>r.id!==existing.id);
@@ -4603,21 +4989,24 @@ function openRuleModal(existing){
     };
   }
   wrap.querySelector('#saveRule').onclick = ()=>{
-    const title = wrap.querySelector('#ruleTitle').value.trim();
+    const title   = wrap.querySelector('#ruleTitle').value.trim();
     const content = wrap.querySelector('#ruleContent').value.trim();
     if(!title){ const el=wrap.querySelector('#ruleError'); el.textContent='Give it a title.'; el.style.display='block'; return; }
     if(isEdit){
-      existing.title = title; existing.content = content; existing.updatedAt = Date.now(); existing.updatedBy = currentUserId;
+      existing.title=title; existing.content=content; existing.updatedAt=Date.now(); existing.updatedBy=currentUserId;
+      if(pendingFile){ existing.fileData=pendingFile.data; existing.fileName=pendingFile.name; existing.fileType=pendingFile.type; }
+      else if(clearExistingFile){ existing.fileData=null; existing.fileName=null; existing.fileType=null; }
     } else {
+      const entry = { id:uid(), title, content, updatedAt:Date.now(), updatedBy:currentUserId, pinned:false, fileData:null, fileName:null, fileType:null };
+      if(pendingFile){ entry.fileData=pendingFile.data; entry.fileName=pendingFile.name; entry.fileType=pendingFile.type; }
       state.houseRules = state.houseRules || [];
-      state.houseRules.push({ id:uid(), title, content, updatedAt:Date.now(), updatedBy:currentUserId });
+      state.houseRules.push(entry);
       logXP(currentUserId, 'rule_add', title, XP.ruleAdd);
     }
     saveState(); document.body.removeChild(wrap); render();
   };
 }
 
-/* ---------- EVENT HANDLERS ---------- */
 function attachHandlers(){
   const c = document.getElementById('content');
 
@@ -4708,6 +5097,14 @@ function attachHandlers(){
     state.houseRules = (state.houseRules||[]).filter(x=>x.id!==el.dataset.id);
     saveState(); render();
   });
+  c.querySelectorAll('[data-action="toggle-pin-rule"]').forEach(el=> el.onclick = ()=>{
+    const r = (state.houseRules||[]).find(x=>x.id===el.dataset.id);
+    if(r){ r.pinned = !r.pinned; saveState(); render(); }
+  });
+  c.querySelectorAll('[data-action="rules-sort"]').forEach(el=> el.onclick = ()=>{
+    rulesSortMode = el.dataset.sort; render();
+  });
+  c.querySelectorAll('[data-action="view-rule-file"]').forEach(el=> el.onclick = ()=> viewRuleFileModal(el.dataset.id));
 
   const calPrev = c.querySelector('[data-action="cal-prev"]');
   if(calPrev) calPrev.onclick = ()=>{ viewMonth--; if(viewMonth<0){viewMonth=11;viewYear--;} render(); };
@@ -4818,7 +5215,19 @@ function attachHandlers(){
   };
 
   const splitChips = c.querySelectorAll('#splitChips .chip');
-  splitChips.forEach(ch=> ch.onclick = ()=> ch.classList.toggle('active'));
+  splitChips.forEach(ch=>{
+    const m = memberById(ch.dataset.id);
+    ch.onclick = ()=>{
+      ch.classList.toggle('active');
+      if(ch.classList.contains('active') && m){
+        // restore colour when re-included
+        ch.style.background = m.color; ch.style.borderColor = m.color; ch.style.color = '';
+      } else {
+        // let CSS handle the greyed-out style
+        ch.style.background = ''; ch.style.borderColor = ''; ch.style.color = '';
+      }
+    };
+  });
 
   const addExpenseBtn = c.querySelector('[data-action="add-expense"]');
   if(addExpenseBtn) addExpenseBtn.onclick = ()=>{
@@ -4878,6 +5287,8 @@ function attachHandlers(){
   c.querySelectorAll('[data-action="delete-reminder"]').forEach(el=> el.onclick = ()=>{
     state.reminders = state.reminders.filter(x=>x.id!==el.dataset.id); saveState(); render();
   });
+  c.querySelectorAll('[data-action="settle-expense"]').forEach(el=> el.onclick = ()=> openSettleModal(el.dataset.id));
+  c.querySelectorAll('[data-action="view-receipt"]').forEach(el=> el.onclick = ()=> viewReceiptModal(el.dataset.id));
   c.querySelectorAll('[data-action="remove-expense"]').forEach(el=> el.onclick = ()=>{
     const ex = state.expenses.find(x=>x.id===el.dataset.id);
     if(!ex) return;
