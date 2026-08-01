@@ -4669,11 +4669,17 @@ function renderReminders(){
 function computeBalances(){
   const bal = {};
   state.members.forEach(m=>bal[m.id]=0);
-  state.expenses.filter(ex=>!ex.removed && !ex.settled).forEach(ex=>{
+  state.expenses.filter(ex=>!ex.removed).forEach(ex=>{
     const splitN = ex.splitAmong.length || 1;
     const share = ex.amount / splitN;
-    ex.splitAmong.forEach(id=>{ bal[id] = (bal[id]||0) - share; });
-    bal[ex.paidBy] = (bal[ex.paidBy]||0) + ex.amount;
+    ex.splitAmong.forEach(id=>{
+      // Only count this person's share if they haven't settled it yet
+      const personSettled = ex.settlements && ex.settlements[id];
+      if(!personSettled){
+        bal[id] = (bal[id]||0) - share;
+        bal[ex.paidBy] = (bal[ex.paidBy]||0) + share;
+      }
+    });
   });
   return bal;
 }
@@ -4697,79 +4703,108 @@ function settlementPlan(bal){
 }
 function expenseRow(ex){
   const payer = memberById(ex.paidBy);
-  const canManage = !!currentUserId && currentUserId===ex.paidBy;
-  const settledBadge = ex.settled
-    ? `<span class="tag event" style="background:#d4f7e0;color:#1a7a3e;border:1px solid #a3e6b8;font-size:9px;">✓ Settled</span>`
-    : '';
-  const receiptThumb = ex.settled && ex.receiptImage
-    ? `<img src="${ex.receiptImage}" style="width:32px;height:32px;border-radius:6px;object-fit:cover;cursor:pointer;border:1px solid #ddd;" data-action="view-receipt" data-id="${ex.id}" title="View receipt">`
-    : '';
-  return `<div class="row" style="${ex.settled?'opacity:.75;':''}">
-    ${avatarHtml(payer,'sm')}
-    <div class="row-main">
-      <div class="row-title">${escapeHtml(ex.description)} ${settledBadge}</div>
-      <div class="row-sub">${payer?escapeHtml(payer.name):'?'} paid · split ${ex.splitAmong.length} ways</div>
+  const splitN = ex.splitAmong.length || 1;
+  const share = ex.amount / splitN;
+  const settlements = ex.settlements || {};
+  const allSettled = ex.splitAmong.every(id => id===ex.paidBy || settlements[id]);
+  const isPayer = currentUserId === ex.paidBy;
+
+  // Per-person settlement rows
+  const personRows = ex.splitAmong.filter(id => id !== ex.paidBy).map(id => {
+    const m = memberById(id);
+    const s = settlements[id];
+    const canSettle = !s && (isPayer || currentUserId === id);
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line);">
+      ${avatarHtml(m,'sm')}
+      <span style="flex:1;font-size:13px;">${escapeHtml(m?.name||'?')}</span>
+      <span style="font-size:12px;color:var(--ink-soft);">$${share.toFixed(2)}</span>
+      ${s
+        ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;background:#d4f7e0;color:#1a7a3e;border:1px solid #a3e6b8;border-radius:99px;padding:2px 8px;">✓ Paid
+            ${s.receiptImage?`<img src="${s.receiptImage}" style="width:18px;height:18px;border-radius:3px;object-fit:cover;cursor:pointer;" data-action="view-receipt" data-id="${ex.id}" data-mid="${id}" title="View receipt">`:''}</span>`
+        : canSettle
+          ? `<button class="btn ghost" style="font-size:11px;padding:3px 10px;min-height:0;" data-action="settle-share" data-id="${ex.id}" data-mid="${id}">Settle $${share.toFixed(2)}</button>`
+          : `<span style="font-size:11px;color:var(--ink-soft);opacity:.5;">Pending</span>`
+      }
+    </div>`;
+  }).join('');
+
+  // If payer is also in the split, show them as "you paid"
+  const payerInSplit = ex.splitAmong.includes(ex.paidBy);
+
+  return `<div class="card" style="padding:12px 14px;margin-bottom:10px;${allSettled?'opacity:.7;':''}">
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">
+      ${avatarHtml(payer,'sm')}
+      <div style="flex:1;">
+        <div style="font-weight:600;font-size:14px;">${escapeHtml(ex.description)}${allSettled?' <span style="font-size:10px;background:#d4f7e0;color:#1a7a3e;border-radius:99px;padding:1px 7px;border:1px solid #a3e6b8;">All settled</span>':''}</div>
+        <div style="font-size:11px;color:var(--ink-soft);">${payer?escapeHtml(payer.name):'?'} paid $${ex.amount.toFixed(2)} · $${share.toFixed(2)} each</div>
+      </div>
+      ${isPayer?`<button class="icon-btn" data-action="remove-expense" data-id="${ex.id}" title="Remove">✕</button>`:`<button class="icon-btn" disabled style="opacity:.25;cursor:default;" title="Only ${payer?escapeHtml(payer.name):'the payer'} can remove">✕</button>`}
     </div>
-    ${receiptThumb}
-    <span class="balance-amt">$${ex.amount.toFixed(2)}</span>
-    ${!ex.settled && canManage
-      ? `<button class="icon-btn" data-action="settle-expense" data-id="${ex.id}" title="Mark as settled (all paid back)">✓</button>`
-      : ''}
-    ${!ex.settled && canManage
-      ? `<button class="icon-btn" data-action="remove-expense" data-id="${ex.id}" title="Remove">✕</button>`
-      : (!ex.settled ? `<button class="icon-btn" disabled title="Only ${payer?escapeHtml(payer.name):'the person paid'} can remove this" style="opacity:.3;cursor:default;">✕</button>` : '')}
+    ${payerInSplit?`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line);">${avatarHtml(payer,'sm')}<span style="flex:1;font-size:13px;">${escapeHtml(payer?.name||'?')} <span style="font-size:10px;color:var(--ink-soft);">(paid)</span></span><span style="font-size:12px;color:var(--ink-soft);">$${share.toFixed(2)}</span><span style="font-size:11px;color:var(--ink-soft);opacity:.5;">—</span></div>`:''}
+    ${personRows}
   </div>`;
 }
-// Open settle modal — lets payer mark expense as fully settled and optionally attach a receipt photo
-function openSettleModal(expenseId){
+
+function openSettleShareModal(expenseId, memberId){
   const ex = state.expenses.find(e=>e.id===expenseId); if(!ex) return;
+  const m = memberById(memberId);
+  const share = (ex.amount / (ex.splitAmong.length||1)).toFixed(2);
   const wrap = document.createElement('div'); wrap.className='overlay';
   wrap.innerHTML = `
     <div class="modal">
-      <h3>✓ Mark as Settled</h3>
-      <p style="font-size:13px;color:var(--ink-soft);">"${escapeHtml(ex.description)}" — $${ex.amount.toFixed(2)}<br>
-      Marking this settled removes it from outstanding balances.</p>
+      <h3>✓ Settle ${escapeHtml(m?.name||'?')}'s share</h3>
+      <p style="font-size:13px;color:var(--ink-soft);">"${escapeHtml(ex.description)}"<br>
+      Amount: <strong>$${share}</strong></p>
       <div style="margin:14px 0;">
         <label style="font-size:12px;color:var(--ink-soft);">Attach payment screenshot (optional)</label>
-        <input type="file" id="receiptFile" accept="image/*" style="margin-top:6px;width:100%;font-size:12px;">
-        <div id="receiptPreview" style="margin-top:8px;"></div>
+        <input type="file" id="settleFile" accept="image/*" style="margin-top:6px;width:100%;font-size:12px;">
+        <div id="settlePreview" style="margin-top:8px;"></div>
       </div>
       <div class="modal-actions">
         <button class="btn ghost" id="cancelSettle">Cancel</button>
-        <button class="btn" id="confirmSettle" style="background:var(--green);">Mark Settled</button>
+        <button class="btn" id="confirmSettle" style="background:var(--green);">Mark $${share} Settled</button>
       </div>
     </div>`;
   document.body.appendChild(wrap);
   wrap.querySelector('#cancelSettle').onclick = ()=> document.body.removeChild(wrap);
-  // preview receipt image
-  wrap.querySelector('#receiptFile').onchange = async (e)=>{
+  wrap.querySelector('#settleFile').onchange = async e=>{
     const file = e.target.files[0]; if(!file) return;
-    const preview = wrap.querySelector('#receiptPreview');
+    const preview = wrap.querySelector('#settlePreview');
     preview.innerHTML = '<span style="font-size:11px;color:var(--ink-soft);">Compressing…</span>';
-    try {
+    try{
       const b64 = await compressImage(file, 800, 0.75);
-      preview.innerHTML = `<img src="${b64}" style="max-width:100%;max-height:150px;border-radius:8px;margin-top:4px;">`;
+      preview.innerHTML = `<img src="${b64}" style="max-width:100%;max-height:140px;border-radius:8px;margin-top:4px;">`;
       preview.dataset.b64 = b64;
     } catch(err){ preview.innerHTML = '<span style="color:red;font-size:11px;">Could not load image.</span>'; }
   };
   wrap.querySelector('#confirmSettle').onclick = ()=>{
-    ex.settled = true;
-    ex.settledAt = Date.now();
-    ex.settledBy = currentUserId;
-    const preview = wrap.querySelector('#receiptPreview');
-    if(preview.dataset.b64) ex.receiptImage = preview.dataset.b64;
+    if(!ex.settlements) ex.settlements = {};
+    ex.settlements[memberId] = {
+      settledAt: Date.now(),
+      settledBy: currentUserId,
+      amount: parseFloat(share),
+      receiptImage: wrap.querySelector('#settlePreview').dataset.b64 || null
+    };
     document.body.removeChild(wrap);
     saveState(); render();
   };
 }
-function viewReceiptModal(expenseId){
-  const ex = state.expenses.find(e=>e.id===expenseId); if(!ex || !ex.receiptImage) return;
+
+function viewReceiptModal(expenseId, memberId){
+  const ex = state.expenses.find(e=>e.id===expenseId); if(!ex) return;
+  const s = memberId ? (ex.settlements||{})[memberId] : null;
+  const img = s?.receiptImage || ex.receiptImage;
+  if(!img) return;
+  const m = memberId ? memberById(memberId) : null;
   const wrap = document.createElement('div'); wrap.className='overlay';
-  wrap.innerHTML = `<div class="modal" style="text-align:center;">
-    <h3>Payment Receipt</h3>
-    <p style="font-size:12px;color:var(--ink-soft);">${escapeHtml(ex.description)} — $${ex.amount.toFixed(2)}</p>
-    <img src="${ex.receiptImage}" style="max-width:100%;border-radius:10px;margin:10px 0;">
-    <div class="modal-actions"><button class="btn ghost" id="closeReceipt">Close</button></div>
+  wrap.innerHTML = `<div class="modal" style="text-align:center;width:320px;">
+    <h3>Payment Receipt${m?' — '+escapeHtml(m.name):''}</h3>
+    <p style="font-size:12px;color:var(--ink-soft);">${escapeHtml(ex.description)} · $${s?.amount?.toFixed(2)||ex.amount.toFixed(2)}</p>
+    <img src="${img}" style="max-width:100%;border-radius:10px;margin:8px 0;">
+    <div class="modal-actions">
+      <a href="${img}" download="receipt.jpg" class="btn ghost">⬇ Download</a>
+      <button class="btn ghost" id="closeReceipt">Close</button>
+    </div>
   </div>`;
   document.body.appendChild(wrap);
   wrap.querySelector('#closeReceipt').onclick = ()=> document.body.removeChild(wrap);
@@ -5281,8 +5316,8 @@ function attachHandlers(){
   c.querySelectorAll('[data-action="delete-reminder"]').forEach(el=> el.onclick = ()=>{
     state.reminders = state.reminders.filter(x=>x.id!==el.dataset.id); saveState(); render();
   });
-  c.querySelectorAll('[data-action="settle-expense"]').forEach(el=> el.onclick = ()=> openSettleModal(el.dataset.id));
-  c.querySelectorAll('[data-action="view-receipt"]').forEach(el=> el.onclick = ()=> viewReceiptModal(el.dataset.id));
+  c.querySelectorAll('[data-action="settle-share"]').forEach(el=> el.onclick = ()=> openSettleShareModal(el.dataset.id, el.dataset.mid));
+  c.querySelectorAll('[data-action="view-receipt"]').forEach(el=> el.onclick = ()=> viewReceiptModal(el.dataset.id, el.dataset.mid));
   c.querySelectorAll('[data-action="remove-expense"]').forEach(el=> el.onclick = ()=>{
     const ex = state.expenses.find(x=>x.id===el.dataset.id);
     if(!ex) return;
