@@ -4683,6 +4683,113 @@ function computeBalances(){
   });
   return bal;
 }
+// Returns the full bilateral picture between two people across all unsettled expenses
+function getBilateralBalance(userId, otherId){
+  const shareOf = ex => ex.amount / (ex.splitAmong.length || 1);
+  let iOweThem = 0, theyOweMe = 0;
+  const iOweItems = [], theyOweItems = [];
+  state.expenses.filter(ex => !ex.removed).forEach(ex => {
+    const s = ex.settlements || {};
+    // otherId paid, I owe a share and haven't settled
+    if(ex.paidBy === otherId && ex.splitAmong.includes(userId) && userId !== otherId && !s[userId]){
+      const amt = shareOf(ex);
+      iOweThem += amt;
+      iOweItems.push({ description: ex.description, amount: amt, id: ex.id });
+    }
+    // I paid, otherId owes a share and hasn't settled
+    if(ex.paidBy === userId && ex.splitAmong.includes(otherId) && otherId !== userId && !s[otherId]){
+      const amt = shareOf(ex);
+      theyOweMe += amt;
+      theyOweItems.push({ description: ex.description, amount: amt, id: ex.id, memberId: otherId });
+    }
+  });
+  return { iOweThem, theyOweMe, net: theyOweMe - iOweThem, iOweItems, theyOweItems };
+}
+
+function openSettleUpModal(otherId){
+  const me = memberById(currentUserId);
+  const other = memberById(otherId);
+  if(!me || !other) return;
+  const { iOweThem, theyOweMe, net, iOweItems, theyOweItems } = getBilateralBalance(currentUserId, otherId);
+  const wrap = document.createElement('div'); wrap.className = 'overlay';
+
+  const netLine = Math.abs(net) < 0.01
+    ? `<div style="font-size:15px;font-weight:700;color:var(--green);text-align:center;padding:14px 0;">🎉 You're all square!</div>`
+    : net > 0
+      ? `<div style="background:#d4f7e0;border:1px solid #a3e6b8;border-radius:10px;padding:12px 14px;text-align:center;margin-top:4px;">
+           <div style="font-size:11px;color:#1a7a3e;">Net — ${escapeHtml(other.name)} should pay you</div>
+           <div style="font-size:26px;font-weight:800;color:#1a7a3e;">$${net.toFixed(2)}</div>
+         </div>`
+      : `<div style="background:#fde8e8;border:1px solid #f5b8b8;border-radius:10px;padding:12px 14px;text-align:center;margin-top:4px;">
+           <div style="font-size:11px;color:#a03030;">Net — you should pay ${escapeHtml(other.name)}</div>
+           <div style="font-size:26px;font-weight:800;color:#a03030;">$${Math.abs(net).toFixed(2)}</div>
+         </div>`;
+
+  const makeItemRows = (items, label, color) => items.length === 0 ? '' : `
+    <div style="margin-top:14px;">
+      <div style="font-size:10px;font-weight:700;color:${color};letter-spacing:.05em;margin-bottom:6px;">${label}</div>
+      ${items.map(it=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid var(--line);">
+        <span style="color:var(--ink-soft);">${escapeHtml(it.description)}</span>
+        <span style="font-weight:600;">$${it.amount.toFixed(2)}</span>
+      </div>`).join('')}
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:6px 0 0;">
+        <span>Total</span><span>$${items.reduce((s,i)=>s+i.amount,0).toFixed(2)}</span>
+      </div>
+    </div>`;
+
+  wrap.innerHTML = `<div class="modal">
+    <h3 style="display:flex;align-items:center;gap:8px;">${avatarHtml(other,'sm')} You & ${escapeHtml(other.name)}</h3>
+    ${makeItemRows(theyOweItems, `${escapeHtml(other.name).toUpperCase()} OWES YOU`, '#1a7a3e')}
+    ${makeItemRows(iOweItems, `YOU OWE ${escapeHtml(other.name).toUpperCase()}`, '#a03030')}
+    ${netLine}
+    ${Math.abs(net) > 0.01 ? `
+    <div style="margin-top:16px;">
+      <label style="font-size:12px;color:var(--ink-soft);">Attach payment screenshot (optional)</label>
+      <input type="file" id="settleAllFile" accept="image/*" style="margin-top:6px;width:100%;font-size:12px;">
+      <div id="settleAllPreview" style="margin-top:6px;"></div>
+    </div>` : ''}
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="btn ghost" id="cancelSettleAll">Close</button>
+      ${Math.abs(net) > 0.01 ? `<button class="btn" id="confirmSettleAll" style="background:var(--green);">✓ Settle all — $${Math.abs(net).toFixed(2)}</button>` : ''}
+    </div>
+  </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('#cancelSettleAll').onclick = ()=> document.body.removeChild(wrap);
+
+  const fileInput = wrap.querySelector('#settleAllFile');
+  if(fileInput) fileInput.onchange = async e => {
+    const file = e.target.files[0]; if(!file) return;
+    const preview = wrap.querySelector('#settleAllPreview');
+    preview.innerHTML = '<span style="font-size:11px;color:var(--ink-soft);">Compressing…</span>';
+    try {
+      const b64 = await compressImage(file, 800, 0.75);
+      preview.innerHTML = `<img src="${b64}" style="max-width:100%;max-height:130px;border-radius:8px;">`;
+      preview.dataset.b64 = b64;
+    } catch(e){ preview.innerHTML = '<span style="font-size:11px;color:red;">Could not load image.</span>'; }
+  };
+
+  const confirmBtn = wrap.querySelector('#confirmSettleAll');
+  if(confirmBtn) confirmBtn.onclick = () => {
+    const receipt = wrap.querySelector('#settleAllPreview')?.dataset?.b64 || null;
+    const now = Date.now();
+    // Settle all open items between the two people
+    state.expenses.filter(ex => !ex.removed).forEach(ex => {
+      const s = ex.settlements = ex.settlements || {};
+      const shareAmt = ex.amount / (ex.splitAmong.length || 1);
+      // other owes me → mark their share settled
+      if(ex.paidBy === currentUserId && ex.splitAmong.includes(otherId) && !s[otherId]){
+        s[otherId] = { settledAt: now, settledBy: currentUserId, amount: shareAmt, receiptImage: receipt };
+      }
+      // I owe other → mark my share settled
+      if(ex.paidBy === otherId && ex.splitAmong.includes(currentUserId) && !s[currentUserId]){
+        s[currentUserId] = { settledAt: now, settledBy: currentUserId, amount: shareAmt, receiptImage: receipt };
+      }
+    });
+    document.body.removeChild(wrap);
+    saveState(); render();
+  };
+}
+
 function settlementPlan(bal){
   const creditors = [], debtors = [];
   Object.entries(bal).forEach(([id,amt])=>{
@@ -4722,7 +4829,7 @@ function expenseRow(ex){
         ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;background:#d4f7e0;color:#1a7a3e;border:1px solid #a3e6b8;border-radius:99px;padding:2px 8px;">✓ Paid
             ${s.receiptImage?`<img src="${s.receiptImage}" style="width:18px;height:18px;border-radius:3px;object-fit:cover;cursor:pointer;" data-action="view-receipt" data-id="${ex.id}" data-mid="${id}" title="View receipt">`:''}</span>`
         : canSettle
-          ? `<button class="btn ghost" style="font-size:11px;padding:3px 10px;min-height:0;" data-action="settle-share" data-id="${ex.id}" data-mid="${id}">Settle $${share.toFixed(2)}</button>`
+          ? `<button class="btn ghost" style="font-size:11px;padding:3px 10px;min-height:0;" data-action="settle-up-person" data-id="${id}">Settle up</button>`
           : `<span style="font-size:11px;color:var(--ink-soft);opacity:.5;">Pending</span>`
       }
     </div>`;
@@ -4865,7 +4972,17 @@ function renderBills(){
       }).join('')}
       ${moves.length>0?`
         <div class="section-label">Settle up</div>
-        ${moves.map(mv=>`<div class="row"><div class="row-main row-sub"><b>${escapeHtml(memberById(mv.from)?.name||'?')}</b> pays <b>${escapeHtml(memberById(mv.to)?.name||'?')}</b></div><span class="balance-amt">$${mv.amt.toFixed(2)}</span></div>`).join('')}
+        ${moves.map(mv=>{
+          const fromM = memberById(mv.from);
+          const toM   = memberById(mv.to);
+          const isMe  = mv.from===currentUserId || mv.to===currentUserId;
+          const otherId = mv.from===currentUserId ? mv.to : mv.from;
+          return `<div class="row">
+            <div class="row-main row-sub"><b>${escapeHtml(fromM?.name||'?')}</b> pays <b>${escapeHtml(toM?.name||'?')}</b></div>
+            <span class="balance-amt">$${mv.amt.toFixed(2)}</span>
+            ${isMe?`<button class="btn ghost" style="font-size:11px;padding:4px 10px;min-height:0;" data-action="settle-up-person" data-id="${otherId}">View & Settle</button>`:''}
+          </div>`;
+        }).join('')}
       `: `<div class="empty" style="padding-top:10px;">Everyone's settled up.</div>`}
     </div>
 
@@ -5317,6 +5434,7 @@ function attachHandlers(){
     state.reminders = state.reminders.filter(x=>x.id!==el.dataset.id); saveState(); render();
   });
   c.querySelectorAll('[data-action="settle-share"]').forEach(el=> el.onclick = ()=> openSettleShareModal(el.dataset.id, el.dataset.mid));
+  c.querySelectorAll('[data-action="settle-up-person"]').forEach(el=> el.onclick = ()=> openSettleUpModal(el.dataset.id));
   c.querySelectorAll('[data-action="view-receipt"]').forEach(el=> el.onclick = ()=> viewReceiptModal(el.dataset.id, el.dataset.mid));
   c.querySelectorAll('[data-action="remove-expense"]').forEach(el=> el.onclick = ()=>{
     const ex = state.expenses.find(x=>x.id===el.dataset.id);
