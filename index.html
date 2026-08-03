@@ -151,6 +151,12 @@ body{
 .tab[data-tab="reminders"].active{border-bottom-color:var(--orange);}
 .tab[data-tab="bills"].active{border-bottom-color:var(--teal);}
 .tab[data-tab="money"].active{border-bottom-color:var(--green);}
+/* ── My Money: entry-type segmented buttons ── */
+.money-kind-btn{flex:1;padding:12px 6px;border:2px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:800;color:var(--ink-soft);text-align:center;transition:all .12s;}
+.money-kind-btn small{display:block;font-weight:500;font-size:9.5px;margin-top:2px;opacity:.8;}
+.money-kind-btn[data-kind="expense"].active{background:#fde8e8;border-color:#d9480f;color:#d9480f;transform:scale(1.03);}
+.money-kind-btn[data-kind="income"].active{background:#d4f7e0;border-color:#1a7a3e;color:#1a7a3e;transform:scale(1.03);}
+.money-kind-btn[data-kind="payment"].active{background:#efe3ff;border-color:var(--purple);color:var(--purple);transform:scale(1.03);}
 .tab[data-tab="rules"].active{border-bottom-color:var(--pink);}
 .tab[data-tab="pet"].active{border-bottom-color:var(--gold);}
 
@@ -901,6 +907,14 @@ function normalizeState(){
   if(!Array.isArray(state.xpLog)) state.xpLog = [];
   if(!Array.isArray(state.weeklyScorecard)) state.weeklyScorecard = [];
   if(!Array.isArray(state.financeEntries)) state.financeEntries = [];
+  if(!state.financeStart || typeof state.financeStart !== 'object') state.financeStart = {};
+  // Seed HD's money-tracker starting point (as of Aug 3, 2026) if it hasn't been set yet:
+  //   Cash on hand: Chase checking $72.68 + Wells Fargo checking $508.04 = $580.72
+  //   Card debt:    Wells Fargo card $4,678.79 + Chase card $3,944.00   = $8,622.79
+  // Editing via "✎ Edit start" in the Money tab overrides this and won't be re-seeded.
+  if(!state.financeStart['0f1r5fjj']){
+    state.financeStart['0f1r5fjj'] = { cash: 580.72, debt: 8622.79, asOf: '2026-08-03', updatedAt: Date.now() };
+  }
   // Seed the global rotation config if this is an existing house that doesn't have it yet
   if(!state.choreRotation){
     state.choreRotation = {
@@ -3674,8 +3688,23 @@ function renderDashboard(){
   const medals = ['🥇','🥈','🥉'];
   const myAllChores = currentUserId ? state.chores.filter(c=>choreInvolvesMember(c,currentUserId)) : [];
   const myDoneCount = myAllChores.filter(c=>isChoreDone(c)).length;
+  const dashFin = currentUserId ? buildBalanceSeries(currentUserId) : null;
 
   return `
+    ${currentUserId ? (dashFin ? `
+    <div class="card" data-action="goto-money" style="cursor:pointer;">
+      <h3>📈 My Money</h3>
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;">
+        <div style="font-size:28px;font-weight:800;color:${dashFin.net>=0?'#8FE2A8':'#FF9E9E'};">${dashFin.net<0?'−':''}$${Math.abs(dashFin.net).toFixed(2)}</div>
+        <div style="font-size:11px;color:var(--ink-soft);">💵 cash $${dashFin.cash.toFixed(2)} · 💳 card debt $${dashFin.debt.toFixed(2)}</div>
+      </div>
+      ${moneyLineChart(dashFin.series, { h:150, chalk:true, id:'dash' })}
+      <div style="font-size:10px;color:var(--ink-soft);margin-top:4px;">Tap to open your money tracker →</div>
+    </div>` : `
+    <div class="card" data-action="goto-money" style="cursor:pointer;">
+      <h3>📈 My Money</h3>
+      <div class="empty">Track your cash, card debt & spending — tap to set your starting point →</div>
+    </div>`) : ''}
     <div class="card">
       <h3>Today at a glance</h3>
       <button class="btn ghost" data-action="open-quick-task" style="margin:-4px 0 12px;">📌 Assign a task</button>
@@ -5336,6 +5365,7 @@ function renderBills(){
 
 /* ---------- MY MONEY: personal expense & income tracker ---------- */
 let moneyMonth = null; // 'YYYY-MM' currently being viewed
+let moneyEditingStart = false; // whether the baseline edit form is open
 
 function moneyMonthKey(){
   if(!moneyMonth) moneyMonth = todayStr().slice(0,7);
@@ -5346,108 +5376,177 @@ function shiftMoneyMonth(delta){
   const d = new Date(y, m-1+delta, 1);
   moneyMonth = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
 }
-function moneyChartSvg(days, daysInMonth, monShort){
-  const maxSpend = Math.max(10, ...days.map(d=>d.cash+d.card));
-  const W=700, H=240, padL=48, padR=10, padT=18, padB=28;
-  const plotW=W-padL-padR, plotH=H-padT-padB;
-  const bw = plotW/daysInMonth;
-  const yFor = v => padT + plotH - (v/maxSpend)*plotH;
-  let grid='', bars='', dots='', xlabels='';
-  for(let g=0; g<=4; g++){
-    const v = maxSpend*g/4, gy = yFor(v);
-    grid += `<line x1="${padL}" y1="${gy}" x2="${W-padR}" y2="${gy}" stroke="#e8e4d8" stroke-width="1"/>
-             <text x="${padL-6}" y="${gy+3}" text-anchor="end" font-size="9" fill="#8a8578">$${v>=100?Math.round(v):v.toFixed(0)}</text>`;
-  }
-  days.forEach((d,i)=>{
-    const x = padL + i*bw + bw*0.16, w = Math.max(2, bw*0.68);
-    let yTop = yFor(d.cash + d.card);
-    if(d.card > 0){
-      const h = (d.card/maxSpend)*plotH;
-      bars += `<rect x="${x.toFixed(1)}" y="${yTop.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="1.5" fill="var(--purple)"><title>${monShort} ${i+1} — card: $${d.card.toFixed(2)}</title></rect>`;
-      yTop += h;
-    }
-    if(d.cash > 0){
-      const h = (d.cash/maxSpend)*plotH;
-      bars += `<rect x="${x.toFixed(1)}" y="${yTop.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="1.5" fill="var(--green)"><title>${monShort} ${i+1} — cash: $${d.cash.toFixed(2)}</title></rect>`;
-    }
-    if(d.income > 0){
-      dots += `<circle cx="${(padL + i*bw + bw/2).toFixed(1)}" cy="${padT-8}" r="3.5" fill="var(--orange)"><title>${monShort} ${i+1} — income: $${d.income.toFixed(2)}</title></circle>`;
-    }
-    if((i+1)===1 || (i+1)%5===0){
-      xlabels += `<text x="${(padL + i*bw + bw/2).toFixed(1)}" y="${H-10}" text-anchor="middle" font-size="9" fill="#8a8578">${i+1}</text>`;
-    }
+function myFinanceStart(memberId){
+  return (state.financeStart || {})[memberId || currentUserId] || null;
+}
+// Builds the daily running balance since the baseline date.
+// income → cash up · cash expense → cash down · card expense → debt up · card payment → cash down AND debt down
+function buildBalanceSeries(memberId){
+  const fs = myFinanceStart(memberId);
+  if(!fs) return null;
+  const entries = (state.financeEntries||[]).filter(e => e.memberId===memberId && e.date && e.date >= fs.asOf);
+  const deltas = {};
+  entries.forEach(e=>{
+    const d = deltas[e.date] = deltas[e.date] || { cash:0, debt:0 };
+    if(e.kind==='income') d.cash += e.amount;
+    else if(e.kind==='payment'){ d.cash -= e.amount; d.debt -= e.amount; }
+    else if(e.method==='cash') d.cash -= e.amount;
+    else d.debt += e.amount;
   });
+  const lastDate = entries.reduce((mx,e)=> e.date > mx ? e.date : mx, todayStr());
+  const start = new Date(fs.asOf + 'T00:00:00');
+  const end = new Date(lastDate + 'T00:00:00');
+  const series = [];
+  let cash = fs.cash, debt = fs.debt;
+  const d = new Date(start);
+  let guard = 0;
+  while(d <= end && guard++ < 1100){
+    const key = isoDate(d);
+    if(deltas[key]){ cash += deltas[key].cash; debt += deltas[key].debt; }
+    series.push({
+      date: key,
+      cash: Math.round(cash*100)/100,
+      debt: Math.round(debt*100)/100,
+      net:  Math.round((cash-debt)*100)/100,
+      changed: !!deltas[key]
+    });
+    d.setDate(d.getDate()+1);
+  }
+  const trimmed = series.slice(-365);
+  const last = trimmed[trimmed.length-1];
+  return { series: trimmed, cash: last.cash, debt: last.debt, net: last.net };
+}
+// Stock-style running balance line chart (SVG)
+function moneyLineChart(series, opts={}){
+  const W = 700, H = opts.h || 230, padL = 54, padR = 12, padT = 14, padB = 26;
+  const chalk = !!opts.chalk;
+  const n = series.length;
+  const vals = series.map(p=>p.net);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if(hi - lo < 1){ hi += Math.max(1, Math.abs(hi)*0.05); lo -= Math.max(1, Math.abs(lo)*0.05); }
+  const span = hi - lo; hi += span*0.08; lo -= span*0.08;
+  const x = i => n===1 ? padL + (W-padL-padR)/2 : padL + (i/(n-1))*(W-padL-padR);
+  const y = v => padT + (1 - (v-lo)/(hi-lo)) * (H-padT-padB);
+  const up = series[n-1].net >= series[0].net;
+  const lineCol = chalk ? (up ? '#8FE2A8' : '#FF9E9E') : (up ? '#1a7a3e' : '#c0392b');
+  const gridCol = chalk ? 'rgba(255,255,255,.15)' : '#e8e4d8';
+  const txtCol  = chalk ? '#BFD2C7' : '#8a8578';
+  const gid = 'moneyGrad' + (opts.id || '0');
+  const fmt$ = v => (v<0?'−':'') + '$' + (Math.abs(v)>=1000 ? (Math.abs(v)/1000).toFixed(1)+'k' : Math.abs(v).toFixed(0));
+  let grid = '';
+  for(let g=0; g<=4; g++){
+    const v = lo + (hi-lo)*g/4, gy = y(v);
+    grid += `<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${W-padR}" y2="${gy.toFixed(1)}" stroke="${gridCol}" stroke-width="1"/>
+      <text x="${padL-6}" y="${(gy+3).toFixed(1)}" text-anchor="end" font-size="9" fill="${txtCol}">${fmt$(v)}</text>`;
+  }
+  let zero = '';
+  if(lo < 0 && hi > 0) zero = `<line x1="${padL}" y1="${y(0).toFixed(1)}" x2="${W-padR}" y2="${y(0).toFixed(1)}" stroke="${txtCol}" stroke-width="1" stroke-dasharray="4 3"/>`;
+  const pts = series.map((p,i)=>`${x(i).toFixed(1)},${y(p.net).toFixed(1)}`).join(' ');
+  const baseY = (H-padB).toFixed(1);
+  const markers = series.map((p,i)=> p.changed
+    ? `<circle cx="${x(i).toFixed(1)}" cy="${y(p.net).toFixed(1)}" r="3" fill="${lineCol}"><title>${p.date} — net ${p.net<0?'−':''}$${Math.abs(p.net).toFixed(2)} (cash $${p.cash.toFixed(2)} · card debt $${p.debt.toFixed(2)})</title></circle>`
+    : '').join('');
+  const lab = i => `<text x="${x(i).toFixed(1)}" y="${H-8}" text-anchor="${i===0?'start':(i===n-1?'end':'middle')}" font-size="9" fill="${txtCol}">${series[i].date.slice(5).replace('-','/')}</text>`;
+  let xlabels = lab(0);
+  if(n > 2) xlabels += lab(Math.floor((n-1)/2));
+  if(n > 1) xlabels += lab(n-1);
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;" xmlns="http://www.w3.org/2000/svg">
-    ${grid}${bars}${dots}${xlabels}
-  </svg>
-  <div style="display:flex;gap:14px;justify-content:center;font-size:10px;color:var(--ink-soft);margin-top:4px;flex-wrap:wrap;">
-    <span><span style="display:inline-block;width:9px;height:9px;background:var(--purple);border-radius:2px;vertical-align:-1px;"></span> Card</span>
-    <span><span style="display:inline-block;width:9px;height:9px;background:var(--green);border-radius:2px;vertical-align:-1px;"></span> Cash</span>
-    <span><span style="display:inline-block;width:9px;height:9px;background:var(--orange);border-radius:99px;vertical-align:-1px;"></span> Income day</span>
-  </div>`;
+    <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${lineCol}" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="${lineCol}" stop-opacity="0"/>
+    </linearGradient></defs>
+    ${grid}${zero}
+    <polygon points="${x(0).toFixed(1)},${baseY} ${pts} ${x(n-1).toFixed(1)},${baseY}" fill="url(#${gid})"/>
+    <polyline points="${pts}" fill="none" stroke="${lineCol}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${markers}${xlabels}
+  </svg>`;
 }
 function renderMoney(){
   if(!currentUserId) return `<div class="card"><h3>💰 My Money</h3><div class="empty">Pick who you are first (tap your avatar in the top bar) — this tracker is personal to each housemate.</div></div>`;
+  const fs = myFinanceStart();
+  const fin = fs ? buildBalanceSeries(currentUserId) : null;
+
+  // ── Balance card (or baseline setup form) ──
+  let balanceCard;
+  if(!fs || moneyEditingStart){
+    balanceCard = `
+    <div class="card">
+      <h3>📈 ${fs ? 'Update your starting point' : 'Set your starting point'}</h3>
+      <p style="font-size:12px;color:var(--ink-soft);margin:-4px 0 10px;">Enter what you have right now. Your balance graph tracks up and down from here as you log expenses and income.</p>
+      <div class="form-row">
+        <div><label>💵 Cash on hand ($)</label><input id="moneyStartCash" type="number" min="0" step="0.01" inputmode="decimal" value="${fs ? fs.cash.toFixed(2) : ''}" placeholder="0.00"></div>
+        <div><label>💳 Credit card debt ($)</label><input id="moneyStartDebt" type="number" min="0" step="0.01" inputmode="decimal" value="${fs ? fs.debt.toFixed(2) : ''}" placeholder="0.00"></div>
+      </div>
+      ${fs ? `<p style="font-size:11px;color:#a07020;margin:8px 0 0;">⚠️ Saving restarts the graph from today with these new numbers.</p>` : ''}
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button class="btn" data-action="save-money-start" style="background:var(--green);">✓ ${fs ? 'Save new starting point' : 'Start tracking'}</button>
+        ${fs ? `<button class="btn ghost" data-action="cancel-money-start">Cancel</button>` : ''}
+      </div>
+    </div>`;
+  } else {
+    const delta = Math.round((fin.net - (fs.cash - fs.debt))*100)/100;
+    balanceCard = `
+    <div class="card">
+      <h3 style="display:flex;justify-content:space-between;align-items:center;">📈 My Balance
+        <button class="btn ghost" data-action="edit-money-start" style="font-size:11px;padding:4px 10px;min-height:0;">✎ Edit start</button>
+      </h3>
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;">
+        <div style="font-size:32px;font-weight:800;color:${fin.net>=0?'#1a7a3e':'#c0392b'};">${fin.net<0?'−':''}$${Math.abs(fin.net).toFixed(2)}</div>
+        <div style="font-size:12px;font-weight:700;color:${delta>=0?'#1a7a3e':'#c0392b'};">${delta>=0?'▲ +':'▼ −'}$${Math.abs(delta).toFixed(2)} since ${fs.asOf}</div>
+      </div>
+      <div style="display:flex;gap:16px;font-size:12px;color:var(--ink-soft);margin:4px 0 10px;">
+        <span>💵 Cash on hand: <b style="color:var(--ink);">$${fin.cash.toFixed(2)}</b></span>
+        <span>💳 Card debt: <b style="color:${fin.debt>0.005?'#c0392b':'var(--ink)'};">$${fin.debt.toFixed(2)}</b></span>
+      </div>
+      ${moneyLineChart(fin.series, { id:'tab' })}
+      <div style="font-size:10px;color:var(--ink-soft);text-align:center;margin-top:4px;">Net balance (cash − card debt) · dots are days you logged something</div>
+    </div>`;
+  }
+
+  // ── Monthly summary ──
   const mk = moneyMonthKey();
   const [y, mo] = mk.split('-').map(Number);
-  const daysInMonth = new Date(y, mo, 0).getDate();
-  const monthDate = new Date(y, mo-1, 1);
-  const monthLabel = monthDate.toLocaleDateString(undefined,{month:'long',year:'numeric'});
-  const monShort = monthDate.toLocaleDateString(undefined,{month:'short'});
-
+  const monthLabel = new Date(y, mo-1, 1).toLocaleDateString(undefined,{month:'long',year:'numeric'});
   const mine = (state.financeEntries||[]).filter(e => e.memberId===currentUserId && e.date && e.date.slice(0,7)===mk);
   const spentCash = mine.filter(e=>e.kind==='expense' && e.method==='cash').reduce((s,e)=>s+e.amount,0);
   const spentCard = mine.filter(e=>e.kind==='expense' && e.method!=='cash').reduce((s,e)=>s+e.amount,0);
   const spent = spentCash + spentCard;
   const earned = mine.filter(e=>e.kind==='income').reduce((s,e)=>s+e.amount,0);
-  const net = earned - spent;
-
-  // Per-day totals for the chart
-  const days = Array.from({length:daysInMonth}, ()=>({ cash:0, card:0, income:0 }));
-  mine.forEach(e=>{
-    const d = Number(e.date.slice(8,10)) - 1;
-    if(d < 0 || d >= daysInMonth) return;
-    if(e.kind==='income') days[d].income += e.amount;
-    else if(e.method==='cash') days[d].cash += e.amount;
-    else days[d].card += e.amount;
-  });
-
+  const paidOff = mine.filter(e=>e.kind==='payment').reduce((s,e)=>s+e.amount,0);
+  const mNet = earned - spent;
   const sorted = [...mine].sort((a,b)=> b.date.localeCompare(a.date) || (b.createdAt||0)-(a.createdAt||0));
 
   return `
+    ${balanceCard}
+
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
         <button class="btn ghost" data-action="money-prev" style="min-width:42px;padding:6px 10px;">‹</button>
         <h3 style="margin:0;text-align:center;">💰 ${monthLabel}</h3>
         <button class="btn ghost" data-action="money-next" style="min-width:42px;padding:6px 10px;">›</button>
       </div>
-      <p style="font-size:11px;color:var(--ink-soft);text-align:center;margin:6px 0 12px;">Your personal money tracker — separate from the shared house Bills tab.</p>
-      <div style="display:flex;text-align:center;">
+      <div style="display:flex;text-align:center;margin-top:10px;">
         <div style="flex:1;"><div style="font-size:10px;color:var(--ink-soft);">INCOME</div><div style="font-size:18px;font-weight:800;color:#1a7a3e;">+$${earned.toFixed(2)}</div></div>
         <div style="width:1px;background:var(--line);"></div>
         <div style="flex:1;"><div style="font-size:10px;color:var(--ink-soft);">SPENT</div><div style="font-size:18px;font-weight:800;color:#d9480f;">−$${spent.toFixed(2)}</div></div>
         <div style="width:1px;background:var(--line);"></div>
-        <div style="flex:1;"><div style="font-size:10px;color:var(--ink-soft);">NET</div><div style="font-size:18px;font-weight:800;color:${net>=0?'#1a7a3e':'#d9480f'};">${net>=0?'+':'−'}$${Math.abs(net).toFixed(2)}</div></div>
+        <div style="flex:1;"><div style="font-size:10px;color:var(--ink-soft);">NET</div><div style="font-size:18px;font-weight:800;color:${mNet>=0?'#1a7a3e':'#d9480f'};">${mNet>=0?'+':'−'}$${Math.abs(mNet).toFixed(2)}</div></div>
       </div>
-      <div style="display:flex;gap:14px;justify-content:center;font-size:11px;color:var(--ink-soft);margin-top:8px;">
+      <div style="display:flex;gap:14px;justify-content:center;font-size:11px;color:var(--ink-soft);margin-top:8px;flex-wrap:wrap;">
         <span>💳 Card: <b>$${spentCard.toFixed(2)}</b></span>
         <span>💵 Cash: <b>$${spentCash.toFixed(2)}</b></span>
+        ${paidOff>0.005?`<span>🏦 Paid off card: <b>$${paidOff.toFixed(2)}</b></span>`:''}
       </div>
     </div>
 
     <div class="card">
-      <h3>📈 Spending by day</h3>
-      ${mine.length===0
-        ? `<div class="empty">Nothing logged for ${monthLabel} yet — add your first expense or income below.</div>`
-        : moneyChartSvg(days, daysInMonth, monShort)}
-    </div>
-
-    <div class="card">
-      <h3>➕ Add expense or income</h3>
-      <div class="chip-select" id="moneyKindChips">
-        <div class="chip active" data-kind="expense">💸 Expense</div>
-        <div class="chip" data-kind="income">💰 Income</div>
+      <h3>➕ Add to your tracker</h3>
+      <div style="display:flex;gap:8px;" id="moneyKindBtns">
+        <button class="money-kind-btn active" data-kind="expense">💸 Expense<small>money OUT</small></button>
+        <button class="money-kind-btn" data-kind="income">💰 Income<small>money IN</small></button>
+        <button class="money-kind-btn" data-kind="payment">🏦 Card payment<small>pay down debt</small></button>
       </div>
+      <div id="moneyKindHint" style="font-size:12px;font-weight:700;margin-top:8px;color:#d9480f;">💸 Logging an EXPENSE — money going out.</div>
       <div id="moneyMethodWrap" style="margin-top:10px;">
         <label style="font-size:12px;color:var(--ink-soft);">Paid with</label>
         <div class="chip-select" id="moneyMethodChips" style="margin-top:4px;">
@@ -5462,20 +5561,26 @@ function renderMoney(){
         </div>
         <div><label>Date</label><input id="moneyDate" type="date" value="${todayStr()}"></div>
       </div>
-      <button class="btn" data-action="add-money-entry">Add</button>
+      <button class="btn" data-action="add-money-entry" style="background:#d9480f;">💸 Add expense</button>
     </div>
 
     <div class="card">
       <h3>🧾 ${monthLabel} entries</h3>
-      ${sorted.length===0 ? `<div class="empty">No entries this month.</div>` : sorted.map(e=>`
-        <div class="row">
+      ${sorted.length===0 ? `<div class="empty">No entries this month.</div>` : sorted.map(e=>{
+        const isInc = e.kind==='income', isPay = e.kind==='payment';
+        const icon = isInc ? '💰' : isPay ? '🏦' : (e.method==='cash' ? '💵' : '💳');
+        const sub  = isInc ? 'income' : isPay ? 'card payment' : (e.method==='cash' ? 'cash' : 'card');
+        const col  = isInc ? '#1a7a3e' : isPay ? 'var(--purple)' : '#d9480f';
+        const sign = isInc ? '+' : isPay ? '⇄ ' : '−';
+        return `<div class="row">
           <div class="row-main">
-            <b>${e.kind==='income'?'💰':(e.method==='cash'?'💵':'💳')} ${escapeHtml(e.description)}</b>
-            <div class="row-sub">${e.date} · ${e.kind==='income'?'income':(e.method==='cash'?'cash':'card')}</div>
+            <b>${icon} ${escapeHtml(e.description)}</b>
+            <div class="row-sub">${e.date} · ${sub}</div>
           </div>
-          <span class="balance-amt" style="color:${e.kind==='income'?'#1a7a3e':'#d9480f'};">${e.kind==='income'?'+':'−'}$${e.amount.toFixed(2)}</span>
+          <span class="balance-amt" style="color:${col};">${sign}$${e.amount.toFixed(2)}</span>
           <button class="icon-btn" data-action="delete-money-entry" data-id="${e.id}" title="Delete entry">✕</button>
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
     </div>
   `;
 }
@@ -5923,16 +6028,54 @@ function attachHandlers(){
   c.querySelectorAll('[data-action="open-settle-picker"]').forEach(el=> el.onclick = (e)=>{ e.stopPropagation(); openSettlePickerModal(); });
 
   // ── My Money tab ──
-  c.querySelectorAll('#moneyKindChips .chip').forEach(chip=> chip.onclick = ()=>{
-    c.querySelectorAll('#moneyKindChips .chip').forEach(x=> x.classList.remove('active'));
-    chip.classList.add('active');
+  const moneyKindBtns = c.querySelectorAll('#moneyKindBtns .money-kind-btn');
+  const moneyKindHints = {
+    expense: '💸 Logging an EXPENSE — money going out.',
+    income:  '💰 Logging INCOME — money coming in.',
+    payment: '🏦 Logging a CARD PAYMENT — cash goes down, card debt goes down.'
+  };
+  const moneyKindColors = { expense:'#d9480f', income:'#1a7a3e', payment:'#8C5FD1' };
+  const syncMoneyKindUI = ()=>{
+    const kind = c.querySelector('#moneyKindBtns .money-kind-btn.active')?.dataset.kind || 'expense';
     const mw = c.querySelector('#moneyMethodWrap');
-    if(mw) mw.style.display = chip.dataset.kind==='expense' ? 'block' : 'none';
+    if(mw) mw.style.display = kind==='expense' ? 'block' : 'none';
+    const hint = c.querySelector('#moneyKindHint');
+    if(hint){ hint.textContent = moneyKindHints[kind]; hint.style.color = moneyKindColors[kind]; }
+    const btn = c.querySelector('[data-action="add-money-entry"]');
+    if(btn){
+      btn.textContent = kind==='expense' ? '💸 Add expense' : kind==='income' ? '💰 Add income' : '🏦 Add card payment';
+      btn.style.background = moneyKindColors[kind];
+    }
+    const desc = c.querySelector('#moneyDesc');
+    if(desc) desc.placeholder = kind==='income' ? 'e.g. Paycheck, Venmo from a friend' : kind==='payment' ? 'e.g. Paid off Visa (optional)' : 'e.g. Gas, groceries, food';
+  };
+  moneyKindBtns.forEach(b=> b.onclick = ()=>{
+    moneyKindBtns.forEach(x=> x.classList.remove('active'));
+    b.classList.add('active');
+    syncMoneyKindUI();
   });
+  if(moneyKindBtns.length) syncMoneyKindUI();
   c.querySelectorAll('#moneyMethodChips .chip').forEach(chip=> chip.onclick = ()=>{
     c.querySelectorAll('#moneyMethodChips .chip').forEach(x=> x.classList.remove('active'));
     chip.classList.add('active');
   });
+  const saveStartBtn = c.querySelector('[data-action="save-money-start"]');
+  if(saveStartBtn) saveStartBtn.onclick = ()=>{
+    if(!currentUserId){ alert('Pick who you are first.'); return; }
+    const cash = Math.round(parseFloat(c.querySelector('#moneyStartCash').value || '') * 100) / 100;
+    const debt = Math.round(parseFloat(c.querySelector('#moneyStartDebt').value || '0') * 100) / 100;
+    if(isNaN(cash) || cash < 0){ alert('Enter your cash on hand ($0 or more).'); return; }
+    if(isNaN(debt) || debt < 0){ alert('Enter your card debt ($0 or more — leave 0 if none).'); return; }
+    if(!state.financeStart) state.financeStart = {};
+    state.financeStart[currentUserId] = { cash, debt, asOf: todayStr(), updatedAt: Date.now() };
+    moneyEditingStart = false;
+    saveState(); render();
+  };
+  const editStartBtn = c.querySelector('[data-action="edit-money-start"]');
+  if(editStartBtn) editStartBtn.onclick = ()=>{ moneyEditingStart = true; render(); };
+  const cancelStartBtn = c.querySelector('[data-action="cancel-money-start"]');
+  if(cancelStartBtn) cancelStartBtn.onclick = ()=>{ moneyEditingStart = false; render(); };
+  c.querySelectorAll('[data-action="goto-money"]').forEach(el=> el.onclick = ()=>{ activeTab = 'money'; render(); });
   const moneyPrev = c.querySelector('[data-action="money-prev"]');
   if(moneyPrev) moneyPrev.onclick = ()=>{ shiftMoneyMonth(-1); render(); };
   const moneyNext = c.querySelector('[data-action="money-next"]');
@@ -5940,12 +6083,15 @@ function attachHandlers(){
   const addMoneyBtn = c.querySelector('[data-action="add-money-entry"]');
   if(addMoneyBtn) addMoneyBtn.onclick = ()=>{
     if(!currentUserId){ alert('Pick who you are first (tap your avatar in the top bar).'); return; }
-    const kind = c.querySelector('#moneyKindChips .chip.active')?.dataset.kind || 'expense';
+    const kind = c.querySelector('#moneyKindBtns .money-kind-btn.active')?.dataset.kind || 'expense';
     const method = c.querySelector('#moneyMethodChips .chip.active')?.dataset.method || 'card';
-    const description = c.querySelector('#moneyDesc').value.trim();
+    let description = c.querySelector('#moneyDesc').value.trim();
     const amount = Math.round(parseFloat(c.querySelector('#moneyAmount').value) * 100) / 100;
     const date = c.querySelector('#moneyDate').value || todayStr();
-    if(!description){ alert('What was it for?'); return; }
+    if(!description){
+      if(kind==='payment') description = 'Card payment';
+      else { alert('What was it for?'); return; }
+    }
     if(isNaN(amount) || amount <= 0){ alert('Enter an amount above $0.'); return; }
     state.financeEntries.push({ id:uid(), memberId:currentUserId, kind, method: kind==='expense' ? method : null, description, amount, date, createdAt:Date.now() });
     moneyMonth = date.slice(0,7); // jump the view to the month you just logged into
