@@ -637,6 +637,72 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
 .dev-btn-danger:hover { background:#b02a37; }
 #devFloatBtn { position:fixed; bottom:100px; right:14px; z-index:200; padding:8px 14px; border-radius:20px; background:#111; color:#fff; border:none; font-size:13px; font-weight:700; cursor:pointer; display:none; box-shadow:0 4px 14px rgba(0,0,0,.4); letter-spacing:.02em; }
 
+/* ── Splitwise-style bills hero ── */
+.bills-hero { padding:18px 16px; }
+.bills-headline { font-size:17px; text-align:center; padding:4px 0 2px; color:var(--ink); }
+.bills-headline.owe b  { color:#d9480f; }
+.bills-headline.owed b { color:#1a7a3e; }
+.bills-headline.square { color:#1a7a3e; font-weight:600; }
+.bills-settle-list { display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+.bills-settle-row {
+  display:flex; align-items:center; gap:10px; width:100%;
+  background:var(--board-bg2); border:1.5px solid var(--line); border-radius:12px;
+  padding:10px 12px; cursor:pointer; text-align:left; transition:all .12s;
+}
+.bills-settle-row:hover { border-color:var(--purple); background:#fff; }
+
+/* ── Splitwise-style expenses ── */
+.sw-green  { color:#1a9c74; }
+.sw-orange { color:#e8641e; }
+.sw-grey   { color:var(--ink-soft); }
+.sw-hero { text-align:center; padding:20px 16px 16px; }
+.sw-hero-label { font-family:var(--pixel-font); font-size:9px; color:var(--ink-soft); letter-spacing:.08em; }
+.sw-hero-num { font-size:34px; font-weight:800; margin-top:4px; line-height:1.1; }
+.sw-hero-sub { font-size:12px; color:var(--ink-soft); margin-top:2px; }
+.sw-hero-cols { display:flex; align-items:center; justify-content:center; gap:0; margin-top:14px; border-top:1px solid var(--line); padding-top:12px; }
+.sw-hero-col { flex:1; display:flex; flex-direction:column; gap:2px; font-size:11px; }
+.sw-hero-col b { font-size:16px; }
+.sw-hero-divider { width:1px; height:32px; background:var(--line); }
+.sw-person-line { display:flex; align-items:center; gap:10px; width:100%; background:none; border:none; border-top:1px solid var(--line); padding:10px 2px; cursor:pointer; text-align:left; font-family:inherit; }
+.sw-person-line:first-of-type { border-top:none; }
+.sw-person-line:hover { background:var(--board-bg2); }
+.sw-person-line-name { flex:1; font-size:14px; font-weight:600; color:var(--ink); }
+.sw-hidden-tag { font-weight:400; font-size:11px; color:var(--ink-soft); }
+.sw-person-line-amt { text-align:right; font-size:10px; line-height:1.3; }
+.sw-person-line-amt b { font-size:14px; }
+.sw-chevron { color:var(--ink-soft); font-size:18px; opacity:.5; }
+.sw-row { border:1px solid var(--line); border-radius:12px; margin-bottom:8px; background:#fff; cursor:pointer; overflow:hidden; transition:border-color .12s; }
+.sw-row:hover { border-color:var(--purple); }
+.sw-row--settled { opacity:.65; }
+.sw-main { display:flex; align-items:center; gap:10px; padding:10px 12px; }
+.sw-date { display:flex; flex-direction:column; align-items:center; line-height:1.1; flex:none; width:32px; }
+.sw-date span { font-size:9px; text-transform:uppercase; color:var(--ink-soft); }
+.sw-date b { font-size:16px; color:var(--ink); }
+.sw-mid { flex:1; min-width:0; }
+.sw-desc { font-size:14px; font-weight:600; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sw-sub { font-size:11px; color:var(--ink-soft); }
+.sw-settled-tag { font-size:9px; background:#d4f7e0; color:#1a7a3e; border:1px solid #a3e6b8; border-radius:99px; padding:1px 6px; font-weight:400; }
+.sw-right { text-align:right; flex:none; }
+.sw-right-label { font-size:9px; }
+.sw-right-amt { font-size:14px; font-weight:800; }
+.sw-expand { border-top:1px solid var(--line); padding:6px 12px 10px; background:var(--board-bg2); }
+.sw-person-row { display:flex; align-items:center; gap:8px; padding:6px 0; border-top:1px solid var(--line); }
+.sw-person-row:first-child { border-top:none; }
+.sw-person-name { flex:1; font-size:13px; }
+.sw-paid-tag { font-size:10px; color:var(--ink-soft); }
+.sw-person-amt { font-size:12px; color:var(--ink-soft); }
+.sw-paid-pill { display:inline-flex; align-items:center; gap:4px; font-size:11px; background:#d4f7e0; color:#1a7a3e; border:1px solid #a3e6b8; border-radius:99px; padding:2px 8px; }
+.sw-receipt-thumb { width:18px; height:18px; border-radius:3px; object-fit:cover; cursor:pointer; }
+.sw-settle-btn { font-size:11px; padding:3px 10px; min-height:0; }
+.sw-pending { font-size:11px; color:var(--ink-soft); opacity:.5; }
+.sw-expand-footer { display:flex; justify-content:flex-end; padding-top:8px; }
+
+.bills-settle-text { flex:1; font-size:13px; color:var(--ink); }
+.bills-settle-amt { font-weight:800; font-size:15px; }
+.bills-settle-amt.owe  { color:#d9480f; }
+.bills-settle-amt.owed { color:#1a7a3e; }
+.bills-settle-cta { font-size:12px; color:var(--purple); font-weight:700; white-space:nowrap; }
+
 /* --- toast feedback after an action --- */
 .pet-toast {
   position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
@@ -710,6 +776,15 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
 <body>
 
 <div id="loadingScreen" class="loading-screen">Setting Prolific up…</div>
+<script>
+  // Boot watchdog (non-module): if nothing clears this in 12s, the app failed to boot.
+  window.__bootWatchdog = setTimeout(function(){
+    var ls = document.getElementById('loadingScreen');
+    if(ls && ls.style.display !== 'none'){
+      ls.innerHTML = '<div style="text-align:center;padding:20px;">⚠️ The app is taking too long to load.<br><small style="opacity:.7;">Check your internet connection.</small><br><br><button onclick="location.reload()" style="padding:10px 22px;border-radius:10px;border:none;background:#2E78C9;color:#fff;font-weight:700;font-size:14px;cursor:pointer;">↻ Reload</button></div>';
+    }
+  }, 12000);
+</script>
 <input type="file" id="avatarFileInput" accept="image/*" style="display:none">
 <input type="file" id="dayPhotoFileInput" accept="image/*" style="display:none">
 
@@ -912,16 +987,47 @@ function applyRotationToChores(){
   return true; // changed — caller should saveState()
 }
 
+// ── Failsafe reveal: the loading screen must NEVER be able to hang forever ──
+let appRevealed = false;
+function revealApp(note){
+  if(appRevealed) return;
+  appRevealed = true;
+  clearTimeout(window.__bootWatchdog);
+  const ls = document.getElementById('loadingScreen'); if(ls) ls.style.display='none';
+  const app = document.getElementById('app'); if(app) app.style.display='block';
+  if(note){
+    const bar = document.createElement('div');
+    bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:300;background:#fff3cd;border-bottom:2px solid #f0ad4e;color:#7a5c00;font-size:12px;padding:8px 34px 8px 12px;';
+    bar.textContent = note;
+    const x = document.createElement('button');
+    x.textContent = '✕';
+    x.style.cssText = 'position:absolute;right:6px;top:4px;background:none;border:none;font-size:15px;cursor:pointer;color:#7a5c00;padding:4px;';
+    x.onclick = ()=> bar.remove();
+    bar.appendChild(x);
+    document.body.appendChild(bar);
+  }
+}
+window.addEventListener('error', (e)=>{ revealApp('⚠️ Something went wrong while loading — the app may be partially broken. ('+(e.message||'unknown error')+')'); });
+window.addEventListener('unhandledrejection', ()=>{ revealApp('⚠️ Something went wrong while loading — the app may be partially broken.'); });
+
 async function loadState(){
   try{
-    const snap = await getDoc(stateDocRef);
+    const snap = await Promise.race([
+      getDoc(stateDocRef),
+      new Promise((_,rej)=> setTimeout(()=> rej(new Error('Firebase load timed out')), 8000))
+    ]);
     if(snap.exists() && snap.data().json){ state = JSON.parse(snap.data().json); }
   } catch(e){ console.error('load failed', e); }
   normalizeState();
-  checkAndRestoreIfNeeded();
+  // note: restore dialog moved to init(), AFTER the app is revealed
 }
 async function saveState(){
-  try{ await setDoc(stateDocRef, { json: JSON.stringify(state), updatedAt: Date.now() }); }
+  try{
+    await Promise.race([
+      setDoc(stateDocRef, { json: JSON.stringify(state), updatedAt: Date.now() }),
+      new Promise((_,rej)=> setTimeout(()=> rej(new Error('Firebase save timed out')), 6000))
+    ]);
+  }
   catch(e){ console.error('save failed', e); }
 }
 async function checkAndRestoreIfNeeded(){
@@ -1322,6 +1428,7 @@ async function devFixChoreWeek(){
     alert('❌ Save failed: ' + e.message + '\nMake sure you\'re on the hosted URL, not a local file.');
     syncPaused = false;
   }
+}
 function devAddMess(memberId){
   const m = memberById(memberId); if(!m) return;
   ensurePet(m);
@@ -1648,6 +1755,9 @@ function attachDevHandlers(){
 
 async function init(){
   selectedCalDate = todayStr();
+  // Watchdog: if Firebase or migrations hang, show the app anyway after 10s
+  const initWatchdog = setTimeout(()=> revealApp('⏱️ Loading took too long — showing the app anyway. Data may still be syncing.'), 10000);
+  try{
   await loadState();
   if(scoreCompletedWeeks()) await saveState();
   if(applyRotationToChores()) await saveState(); // push this week's rotation to Firebase
@@ -1686,13 +1796,18 @@ async function init(){
     state.mascotsAutoAssigned = true;
     await saveState();
   }
+  } catch(e){
+    console.error('init pre-reveal steps failed', e);
+    revealApp('⚠️ Some data failed to load — the app may be incomplete. Pull to refresh or reload.');
+  }
+  clearTimeout(initWatchdog);
   try{
     const remembered = localStorage.getItem('house-board-who-am-i');
     if(remembered && state.members.some(m=>m.id===remembered)){ currentUserId = remembered; }
   } catch(e){}
   document.getElementById('todayDate').textContent = new Date().toLocaleDateString(undefined, window.innerWidth<=520 ? {weekday:'short',month:'short',day:'numeric'} : {weekday:'long',month:'long',day:'numeric'});
-  document.getElementById('loadingScreen').style.display='none';
-  document.getElementById('app').style.display='block';
+  revealApp();
+  checkAndRestoreIfNeeded(); // restore dialog only fires once the app is visible
 
   document.querySelectorAll('.tab').forEach(t=>{
     t.addEventListener('click', ()=>{ activeTab = t.dataset.tab; render(); });
@@ -4837,6 +4952,8 @@ function settlementPlan(bal){
   }
   return moves;
 }
+let expandedExpenseId = null; // which expense card is expanded in the Splitwise feed
+
 function expenseRow(ex){
   const payer = memberById(ex.paidBy);
   const splitN = ex.splitAmong.length || 1;
@@ -4844,39 +4961,60 @@ function expenseRow(ex){
   const settlements = ex.settlements || {};
   const allSettled = ex.splitAmong.every(id => id===ex.paidBy || settlements[id]);
   const isPayer = currentUserId === ex.paidBy;
+  const iAmIn = ex.splitAmong.includes(currentUserId);
+  const d = new Date(ex.createdAt || Date.now());
+  const mon = d.toLocaleDateString(undefined,{month:'short'});
+  const day = d.getDate();
 
-  // Per-person settlement rows
-  const personRows = ex.splitAmong.filter(id => id !== ex.paidBy).map(id => {
-    const m = memberById(id);
-    const s = settlements[id];
-    const canSettle = !s && (isPayer || currentUserId === id);
-    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line);">
-      ${avatarHtml(m,'sm')}
-      <span style="flex:1;font-size:13px;">${escapeHtml(m?.name||'?')}</span>
-      <span style="font-size:12px;color:var(--ink-soft);">$${share.toFixed(2)}</span>
-      ${s
-        ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;background:#d4f7e0;color:#1a7a3e;border:1px solid #a3e6b8;border-radius:99px;padding:2px 8px;">✓ Paid
-            ${s.receiptImage?`<img src="${s.receiptImage}" style="width:18px;height:18px;border-radius:3px;object-fit:cover;cursor:pointer;" data-action="view-receipt" data-id="${ex.id}" data-mid="${id}" title="View receipt">`:''}</span>`
-        : canSettle
-          ? `<button class="btn ghost" style="font-size:11px;padding:3px 10px;min-height:0;" data-action="settle-up-person" data-id="${id}">Settle up</button>`
-          : `<span style="font-size:11px;color:var(--ink-soft);opacity:.5;">Pending</span>`
-      }
-    </div>`;
-  }).join('');
+  // Splitwise-style right column: what this expense means for YOU
+  let rightHtml;
+  if(isPayer){
+    const lent = ex.amount - (iAmIn ? share : 0);
+    rightHtml = `<div class="sw-right"><div class="sw-right-label sw-green">you lent</div><div class="sw-right-amt sw-green">$${lent.toFixed(2)}</div></div>`;
+  } else if(iAmIn){
+    rightHtml = settlements[currentUserId]
+      ? `<div class="sw-right"><div class="sw-right-label sw-grey">you paid ✓</div><div class="sw-right-amt sw-grey">$${share.toFixed(2)}</div></div>`
+      : `<div class="sw-right"><div class="sw-right-label sw-orange">you borrowed</div><div class="sw-right-amt sw-orange">$${share.toFixed(2)}</div></div>`;
+  } else {
+    rightHtml = `<div class="sw-right"><div class="sw-right-label sw-grey" style="opacity:.6;">not involved</div></div>`;
+  }
 
-  // If payer is also in the split, show them as "you paid"
+  const expanded = expandedExpenseId === ex.id;
   const payerInSplit = ex.splitAmong.includes(ex.paidBy);
 
-  return `<div class="card" style="padding:12px 14px;margin-bottom:10px;${allSettled?'opacity:.7;':''}">
-    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">
-      ${avatarHtml(payer,'sm')}
-      <div style="flex:1;">
-        <div style="font-weight:600;font-size:14px;">${escapeHtml(ex.description)}${allSettled?' <span style="font-size:10px;background:#d4f7e0;color:#1a7a3e;border-radius:99px;padding:1px 7px;border:1px solid #a3e6b8;">All settled</span>':''}</div>
-        <div style="font-size:11px;color:var(--ink-soft);">${payer?escapeHtml(payer.name):'?'} paid $${ex.amount.toFixed(2)} · $${share.toFixed(2)} each</div>
+  const personRows = !expanded ? '' : `
+    <div class="sw-expand">
+      ${payerInSplit?`<div class="sw-person-row">${avatarHtml(payer,'sm')}<span class="sw-person-name">${escapeHtml(payer?.name||'?')} <span class="sw-paid-tag">(paid)</span></span><span class="sw-person-amt">$${share.toFixed(2)}</span><span class="sw-pending" style="opacity:.5;">—</span></div>`:''}
+      ${ex.splitAmong.filter(id => id !== ex.paidBy).map(id => {
+        const m = memberById(id);
+        const s = settlements[id];
+        const canSettle = !s && (isPayer || currentUserId === id);
+        return `<div class="sw-person-row">
+          ${avatarHtml(m,'sm')}
+          <span class="sw-person-name">${escapeHtml(m?.name||'?')}</span>
+          <span class="sw-person-amt">$${share.toFixed(2)}</span>
+          ${s
+            ? `<span class="sw-paid-pill">✓ Paid${s.receiptImage?` <img src="${s.receiptImage}" class="sw-receipt-thumb" data-action="view-receipt" data-id="${ex.id}" data-mid="${id}" title="View receipt">`:''}</span>`
+            : canSettle
+              ? `<button class="btn ghost sw-settle-btn" data-action="settle-up-person" data-id="${id}">Settle up</button>`
+              : `<span class="sw-pending">Pending</span>`}
+        </div>`;
+      }).join('')}
+      <div class="sw-expand-footer">
+        ${isPayer?`<button class="icon-btn" data-action="remove-expense" data-id="${ex.id}" title="Remove this expense">✕ Remove</button>`:`<span style="font-size:10px;color:var(--ink-soft);">Only ${escapeHtml(payer?.name||'the payer')} can remove this expense</span>`}
       </div>
-      ${isPayer?`<button class="icon-btn" data-action="remove-expense" data-id="${ex.id}" title="Remove">✕</button>`:`<button class="icon-btn" disabled style="opacity:.25;cursor:default;" title="Only ${payer?escapeHtml(payer.name):'the payer'} can remove">✕</button>`}
+    </div>`;
+
+  return `<div class="sw-row ${allSettled?'sw-row--settled':''}" data-action="toggle-expense-expand" data-id="${ex.id}">
+    <div class="sw-main">
+      <div class="sw-date"><span>${mon}</span><b>${day}</b></div>
+      ${avatarHtml(payer,'sm')}
+      <div class="sw-mid">
+        <div class="sw-desc">${escapeHtml(ex.description)}${allSettled?' <span class="sw-settled-tag">✓ settled</span>':''}</div>
+        <div class="sw-sub">${payer?escapeHtml(payer.name):'?'} paid $${ex.amount.toFixed(2)} · split ${splitN} ways</div>
+      </div>
+      ${rightHtml}
     </div>
-    ${payerInSplit?`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line);">${avatarHtml(payer,'sm')}<span style="flex:1;font-size:13px;">${escapeHtml(payer?.name||'?')} <span style="font-size:10px;color:var(--ink-soft);">(paid)</span></span><span style="font-size:12px;color:var(--ink-soft);">$${share.toFixed(2)}</span><span style="font-size:11px;color:var(--ink-soft);opacity:.5;">—</span></div>`:''}
     ${personRows}
   </div>`;
 }
@@ -4964,10 +5102,54 @@ function backlogRow(ex){
 }
 function renderBills(){
   const bal = computeBalances();
-  const moves = settlementPlan(bal);
+  const myBal = bal[currentUserId] || 0;
+  // Per-person nets vs me (Splitwise "friends" list)
+  const rels = currentUserId
+    ? state.members.filter(m => m.id !== currentUserId && (!m.hidden || Math.abs(bal[m.id]||0) > 0.005))
+        .map(m => ({ m, net: getBilateralBalance(currentUserId, m.id).net }))
+    : [];
+  const totalOwedToMe = rels.filter(r=>r.net> 0.005).reduce((s,r)=>s+r.net,0);
+  const totalIOwe     = rels.filter(r=>r.net<-0.005).reduce((s,r)=>s-r.net,0);
   const sortedActive = [...state.expenses].filter(ex=>!ex.removed).sort((a,b)=>b.createdAt-a.createdAt);
   const sortedAll = [...state.expenses].sort((a,b)=>b.createdAt-a.createdAt);
+
+  // Splitwise hero: big net standing + owe/owed breakdown
+  const heroNum = Math.abs(myBal) < 0.01
+    ? `<div class="sw-hero-num sw-green">$0.00</div><div class="sw-hero-sub">🎉 you're all settled up</div>`
+    : myBal > 0
+      ? `<div class="sw-hero-num sw-green">+$${myBal.toFixed(2)}</div><div class="sw-hero-sub">overall, you are owed</div>`
+      : `<div class="sw-hero-num sw-orange">−$${Math.abs(myBal).toFixed(2)}</div><div class="sw-hero-sub">overall, you owe</div>`;
+
   return `
+    <div class="card sw-hero">
+      <div class="sw-hero-label">TOTAL BALANCE</div>
+      ${heroNum}
+      <div class="sw-hero-cols">
+        <div class="sw-hero-col"><span class="sw-orange">you owe</span><b class="sw-orange">$${totalIOwe.toFixed(2)}</b></div>
+        <div class="sw-hero-divider"></div>
+        <div class="sw-hero-col"><span class="sw-green">you are owed</span><b class="sw-green">$${totalOwedToMe.toFixed(2)}</b></div>
+      </div>
+    </div>
+
+    ${rels.length>0?`
+    <div class="card">
+      <h3>People</h3>
+      ${rels.map(({m,net})=>{
+        const settled = Math.abs(net) < 0.005;
+        return `<button class="sw-person-line" data-action="settle-up-person" data-id="${m.id}">
+          ${avatarHtml(m,'sm')}
+          <span class="sw-person-line-name">${escapeHtml(m.name)}${m.hidden?' <span class="sw-hidden-tag">(hidden)</span>':''}</span>
+          ${settled
+            ? `<span class="sw-person-line-amt sw-grey">settled up</span>`
+            : net>0
+              ? `<span class="sw-person-line-amt sw-green">owes you<br><b>$${net.toFixed(2)}</b></span>`
+              : `<span class="sw-person-line-amt sw-orange">you owe<br><b>$${Math.abs(net).toFixed(2)}</b></span>`}
+          <span class="sw-chevron">›</span>
+        </button>`;
+      }).join('')}
+      <div style="font-size:10px;color:var(--ink-soft);margin-top:6px;">Tap a person to see the full math and settle up.</div>
+    </div>`:''}
+
     <div class="card">
       <h3>Add an expense</h3>
       <div class="form-grid">
@@ -4990,34 +5172,8 @@ function renderBills(){
     </div>
 
     <div class="card">
-      <h3>Balances</h3>
-      ${state.members.filter(m=>!m.hidden || Math.abs(bal[m.id]||0)>0.005).map(m=>{
-        const amt = bal[m.id]||0;
-        return `<div class="row">
-          ${avatarHtml(m,'sm')}
-          <div class="row-main row-title">${escapeHtml(m.name)}${m.hidden?` <span style="font-weight:400;color:var(--ink-soft);font-size:12px;">(hidden, still owes/owed)</span>`:''}</div>
-          <span class="balance-amt ${amt>0.005?'pos':amt<-0.005?'neg':''}">${amt>0.005?'+':''}${amt.toFixed(2)}</span>
-        </div>`;
-      }).join('')}
-      ${moves.length>0?`
-        <div class="section-label">Settle up</div>
-        ${moves.map(mv=>{
-          const fromM = memberById(mv.from);
-          const toM   = memberById(mv.to);
-          const isMe  = mv.from===currentUserId || mv.to===currentUserId;
-          const otherId = mv.from===currentUserId ? mv.to : mv.from;
-          return `<div class="row">
-            <div class="row-main row-sub"><b>${escapeHtml(fromM?.name||'?')}</b> pays <b>${escapeHtml(toM?.name||'?')}</b></div>
-            <span class="balance-amt">$${mv.amt.toFixed(2)}</span>
-            ${isMe?`<button class="btn ghost" style="font-size:11px;padding:4px 10px;min-height:0;" data-action="settle-up-person" data-id="${otherId}">View & Settle</button>`:''}
-          </div>`;
-        }).join('')}
-      `: `<div class="empty" style="padding-top:10px;">Everyone's settled up.</div>`}
-    </div>
-
-    <div class="card">
-      <h3>Recent expenses</h3>
-      <p style="font-size:12px;color:var(--ink-soft);margin:-4px 0 10px;">Only the person who was paid can remove an expense.</p>
+      <h3>Expenses</h3>
+      <p style="font-size:12px;color:var(--ink-soft);margin:-4px 0 10px;">Tap an expense to see everyone's share and settle.</p>
       ${sortedActive.length===0?`<div class="empty">No expenses logged yet.</div>`:sortedActive.map(expenseRow).join('')}
     </div>
 
@@ -5462,10 +5618,15 @@ function attachHandlers(){
   c.querySelectorAll('[data-action="delete-reminder"]').forEach(el=> el.onclick = ()=>{
     state.reminders = state.reminders.filter(x=>x.id!==el.dataset.id); saveState(); render();
   });
-  c.querySelectorAll('[data-action="settle-share"]').forEach(el=> el.onclick = ()=> openSettleShareModal(el.dataset.id, el.dataset.mid));
-  c.querySelectorAll('[data-action="settle-up-person"]').forEach(el=> el.onclick = ()=> openSettleUpModal(el.dataset.id));
-  c.querySelectorAll('[data-action="view-receipt"]').forEach(el=> el.onclick = ()=> viewReceiptModal(el.dataset.id, el.dataset.mid));
-  c.querySelectorAll('[data-action="remove-expense"]').forEach(el=> el.onclick = ()=>{
+  c.querySelectorAll('[data-action="settle-share"]').forEach(el=> el.onclick = (e)=>{ e.stopPropagation(); openSettleShareModal(el.dataset.id, el.dataset.mid); });
+  c.querySelectorAll('[data-action="settle-up-person"]').forEach(el=> el.onclick = (e)=>{ e.stopPropagation(); openSettleUpModal(el.dataset.id); });
+  c.querySelectorAll('[data-action="view-receipt"]').forEach(el=> el.onclick = (e)=>{ e.stopPropagation(); viewReceiptModal(el.dataset.id, el.dataset.mid); });
+  c.querySelectorAll('[data-action="toggle-expense-expand"]').forEach(el=> el.onclick = ()=>{
+    expandedExpenseId = expandedExpenseId === el.dataset.id ? null : el.dataset.id;
+    render();
+  });
+  c.querySelectorAll('[data-action="remove-expense"]').forEach(el=> el.onclick = (e)=>{
+    e.stopPropagation();
     const ex = state.expenses.find(x=>x.id===el.dataset.id);
     if(!ex) return;
     if(currentUserId !== ex.paidBy) return; // only the person who was paid can remove it
@@ -5485,7 +5646,6 @@ function attachHandlers(){
   });
 }
 
-}
 init();
 </script>
 </body>
