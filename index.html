@@ -833,8 +833,8 @@ function normalizeState(){
   // Seed phase2 (Aug 3 transition) if missing from older saves
   if(state.choreRotation && !state.choreRotation.phase2){
     state.choreRotation.phase2 = {
-      startDate:  '2026-08-03',
-      anchorDate: '2026-08-03',
+      startDate:  '2026-08-02',
+      anchorDate: '2026-08-02',
       startOrder: ['jimmyr01','kaitr001','ryanr001','shayla01','0f1r5fjj','chrisr01'],
     };
   }
@@ -848,6 +848,12 @@ function normalizeState(){
         rotation:{ intervalWeeks:2, anchorDate:'2026-08-03', turns:[['shayla01','0f1r5fjj','chrisr01'],['jimmyr01','kaitr001','ryanr001']] }, doneForPeriod:null }
     );
   }
+  // Add living room chore if missing (new house)
+  if(!state.chores.some(c=>c.id==='livroom01')){
+    state.chores.push({ id:'livroom01', type:'fixed', title:'Living room cleanup', assignee:'chrisr01', frequency:'weekly', dueDate:'2026-08-02', done:false });
+  }
+  // Remove hallway chore — not in the new house
+  state.chores = state.chores.filter(c=>c.id!=='hallwy01');
   state.members.forEach(m=>{ if(typeof m.hidden !== 'boolean') m.hidden = false; });
   state.members.forEach(m=>{ if(typeof m.lastSeenLevel !== 'number') m.lastSeenLevel = levelInfo(memberXP(m.id).total).level; });
   // one-time migration of the old flat-rate logs into the unified, source-tagged xpLog
@@ -1125,8 +1131,9 @@ const RESTORED_STATE = {
     { id:'0876gm85', type:'fixed', title:'Clean air fryer & microwave',                    assignee:'ryanr001', frequency:'weekly', dueDate:'2026-07-20', done:false },
     // Shoes, towels & laundry — rotated to Christi this week (was Shayla)
     { id:'lcmmzgcq', type:'fixed', title:'Front door & shoe organization + towel restock & laundry', assignee:'chrisr01', frequency:'weekly', dueDate:'2026-07-20', done:false },
-    // Hallway — Henry
-    { id:'hallwy01', type:'fixed', title:'Hallway clean-up',                               assignee:'henryr01', frequency:'weekly', dueDate:'2026-07-20', done:false },
+    // (Hallway removed — new house does not have this chore)
+    // Living Room Cleanup — in the 6-person weekly rotation
+    { id:'livroom01', type:'fixed', title:'Living room cleanup', assignee:'chrisr01', frequency:'weekly', dueDate:'2026-08-02', done:false },
     // ── Biweekly chores starting Aug 3 (6 people split into 2 groups of 3) ──────────
     // Sweeping, vacuuming & mopping — 3 people per biweek, groups alternate
     { id:'sweep01', type:'rotating', title:'Sweeping, vacuuming & mopping',
@@ -1185,10 +1192,10 @@ const RESTORED_STATE = {
     //  slot:       Trash1     Microwave  DishDry1  Trash2     Shoes      Hallway    DishDry2
     // Aug 3: Henry leaves, hallway removed → 6-person rotation picks up naturally
     phase2: {
-      startDate:   '2026-08-03',
-      anchorDate:  '2026-08-03',
+      startDate:   '2026-08-02',
+      anchorDate:  '2026-08-02',
       startOrder:  ['jimmyr01','kaitr001','ryanr001','shayla01','0f1r5fjj','chrisr01'],
-      //  slot:      Trash1     Microwave  DishDry1  Trash2     Shoes      DishDry2
+      //  slot:      Trash1     Microwave  DishDryer  Trash2    Shoes      LivingRoom
     },
   },
   importedDefaultChores:true, mergedFrontDoorTowel:true, mascotsAutoAssigned:true, notifSeen:{},
@@ -1275,21 +1282,25 @@ function devSetStreak(memberId, days){
 // One-tap fix for the chore week — corrects the anchor date sync bug and rotates fixed chore assignees
 // so nobody repeats the same chore two weeks running.
 function devFixChoreWeek(){
-  if(!confirm('Fix this week\'s chore assignments?\n\n• Dish dryer → Shayla\n• Trash → Kaitlin + HD (rotating with Ryan+Jimmy)\n• Microwave → Ryan\n• Shoes/towels → Christi\n• Hallway → Henry\n\nThis saves to Firebase immediately.')) return;
+  if(!confirm('Apply new house rotation now?\n\n• Trash 1 → Jimmy\n• Microwave → Kaitlin\n• Dish Dryer → Ryan\n• Trash 2 → Shayla\n• Shoes/towels → HD\n• Living Room → Christi\n• Hallway removed\n\nThis saves to Firebase immediately.')) return;
+  state.chores = state.chores.filter(c=>c.id!=='hallwy01');
+  if(!state.chores.some(c=>c.id==='livroom01')){
+    state.chores.push({ id:'livroom01', type:'fixed', title:'Living room cleanup', assignee:'chrisr01', frequency:'weekly', dueDate:'2026-08-02', done:false });
+  }
   const fixes = {
-    'gx6cz5xb': { type:'fixed', assignee:'shayla01', frequency:'weekly', dueDate:'2026-07-20', done:false },
-    'wazxhmic': { type:'rotating', rotation:{ intervalWeeks:1, anchorDate:'2026-07-20', turns:[['kaitr001','0f1r5fjj'],['ryanr001','jimmyr01']] }, doneForPeriod:null },
-    '0876gm85': { assignee:'ryanr001', dueDate:'2026-07-20', done:false },
-    'lcmmzgcq': { assignee:'chrisr01', dueDate:'2026-07-20', done:false },
-    'hallwy01': { assignee:'henryr01', dueDate:'2026-07-20', done:false },
+    'wazxhmic': { type:'rotating', rotation:{ intervalWeeks:1, anchorDate:'2026-08-02', turns:[['jimmyr01','shayla01'],['kaitr001','0f1r5fjj']] }, doneForPeriod:null },
+    '0876gm85': { type:'fixed', assignee:'kaitr001', dueDate:'2026-08-02', done:false },
+    'gx6cz5xb': { type:'fixed', assignee:'ryanr001', dueDate:'2026-08-02', done:false },
+    'lcmmzgcq': { type:'fixed', assignee:'0f1r5fjj', dueDate:'2026-08-02', done:false },
+    'livroom01': { type:'fixed', assignee:'chrisr01', dueDate:'2026-08-02', done:false },
   };
-  state.chores.forEach(ch=>{
-    const fix = fixes[ch.id];
-    if(!fix) return;
-    Object.assign(ch, fix);
-  });
+  state.chores.forEach(ch=>{ const fix=fixes[ch.id]; if(fix) Object.assign(ch,fix); });
+  if(state.choreRotation){
+    state.choreRotation.phase2 = { startDate:'2026-08-02', anchorDate:'2026-08-02', startOrder:['jimmyr01','kaitr001','ryanr001','shayla01','0f1r5fjj','chrisr01'] };
+    state.choreRotation._appliedWeekKey = null;
+  }
   devSave();
-  alert('✅ Chores updated! Shayla=dish dryer, Ryan=microwave, Henry=hallway.');
+  alert('✅ New house rotation is live! Hallway gone, Living Room added.');
 }
 
 // ── 3. mess & sick ─────────────────────────────────────────────
@@ -2259,12 +2270,12 @@ const ROTATION_SLOTS = [
 const ROTATION_SLOTS_P2 = [
   { label:'Trash 1',              choreId:'wazxhmic' },
   { label:'Microwave & Airfryer', choreId:'0876gm85' },
-  { label:'Dish Dryer 1',        choreId:'gx6cz5xb' },
+  { label:'Dish Dryer',          choreId:'gx6cz5xb' },
   { label:'Trash 2',             choreId:'wazxhmic' },
   { label:'Shoes & Towels',      choreId:'lcmmzgcq' },
-  { label:'Dish Dryer 2',        choreId:'gx6cz5xb' },
+  { label:'Living Room Cleanup', choreId:'livroom01' },
 ];
-const PHASE2_START = '2026-08-03';
+const PHASE2_START = '2026-08-02'; // new house — kicks in now
 
 function addWeeks(dateStr, n){
   const d = new Date(dateStr+'T00:00:00');
