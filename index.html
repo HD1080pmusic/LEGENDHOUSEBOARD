@@ -4906,6 +4906,41 @@ function getBilateralBalance(userId, otherId){
   return { iOweThem, theyOweMe, net: theyOweMe - iOweThem, iOweItems, theyOweItems };
 }
 
+// "Settle up" entry point — lists everyone you owe or who owes you, tap one to settle
+function openSettlePickerModal(){
+  if(!currentUserId){ alert('Pick who you are first (tap your avatar in the top bar).'); return; }
+  const rels = state.members
+    .filter(m => m.id !== currentUserId)
+    .map(m => ({ m, net: getBilateralBalance(currentUserId, m.id).net }))
+    .filter(r => Math.abs(r.net) > 0.005)
+    .sort((a,b)=> Math.abs(b.net) - Math.abs(a.net));
+  const wrap = document.createElement('div'); wrap.className = 'overlay';
+  wrap.innerHTML = `<div class="modal">
+    <h3>💸 Settle up</h3>
+    ${rels.length === 0
+      ? `<div class="empty">🎉 You're all square with everyone — nothing to settle.</div>`
+      : `<p style="font-size:12px;color:var(--ink-soft);margin:-4px 0 10px;">Pick who you want to settle with:</p>
+         <div class="bills-settle-list">
+           ${rels.map(({m,net})=>`
+             <button class="bills-settle-row" data-settle-with="${m.id}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;">
+               ${avatarHtml(m,'sm')}
+               <span class="bills-settle-text">${net>0 ? `<b>${escapeHtml(m.name)}</b> owes you` : `You owe <b>${escapeHtml(m.name)}</b>`}</span>
+               <span class="bills-settle-amt ${net>0?'owed':'owe'}">$${Math.abs(net).toFixed(2)}</span>
+               <span class="bills-settle-cta">Settle ›</span>
+             </button>`).join('')}
+         </div>`}
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="btn ghost" id="closeSettlePicker">Close</button>
+    </div>
+  </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('#closeSettlePicker').onclick = ()=> document.body.removeChild(wrap);
+  wrap.querySelectorAll('[data-settle-with]').forEach(el=> el.onclick = ()=>{
+    document.body.removeChild(wrap);
+    openSettleUpModal(el.dataset.settleWith);
+  });
+}
+
 function openSettleUpModal(otherId){
   const me = memberById(currentUserId);
   const other = memberById(otherId);
@@ -4944,17 +4979,49 @@ function openSettleUpModal(otherId){
     ${netLine}
     ${Math.abs(net) > 0.01 ? `
     <div style="margin-top:16px;">
+      <label style="font-size:12px;color:var(--ink-soft);">Settlement amount — ${escapeHtml(net > 0 ? other.name : me.name)} pays ${escapeHtml(net > 0 ? me.name : other.name)}</label>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
+        <span style="font-size:20px;font-weight:800;">$</span>
+        <input type="number" id="settleAmtInput" min="0" step="0.01" inputmode="decimal" value="${Math.abs(net).toFixed(2)}" style="flex:1;font-size:20px;font-weight:800;padding:8px 10px;">
+      </div>
+      <div id="settleAmtHint" style="font-size:11px;color:var(--ink-soft);margin-top:5px;">Calculated: $${Math.abs(net).toFixed(2)} — edit if they paid more or less.</div>
+    </div>
+    <div style="margin-top:14px;">
       <label style="font-size:12px;color:var(--ink-soft);">Attach payment screenshot (optional)</label>
       <input type="file" id="settleAllFile" accept="image/*" style="margin-top:6px;width:100%;font-size:12px;">
       <div id="settleAllPreview" style="margin-top:6px;"></div>
     </div>` : ''}
     <div class="modal-actions" style="margin-top:14px;">
       <button class="btn ghost" id="cancelSettleAll">Close</button>
-      ${Math.abs(net) > 0.01 ? `<button class="btn" id="confirmSettleAll" style="background:var(--green);">✓ Settle all — $${Math.abs(net).toFixed(2)}</button>` : ''}
+      ${Math.abs(net) > 0.01 ? `<button class="btn" id="confirmSettleAll" style="background:var(--green);">✓ Settle — $${Math.abs(net).toFixed(2)}</button>` : ''}
     </div>
   </div>`;
   document.body.appendChild(wrap);
   wrap.querySelector('#cancelSettleAll').onclick = ()=> document.body.removeChild(wrap);
+
+  // Live-update the hint + button as the settlement amount is edited
+  const netAbs = Math.round(Math.abs(net) * 100) / 100;
+  const amtInput = wrap.querySelector('#settleAmtInput');
+  if(amtInput) amtInput.oninput = ()=>{
+    const hint = wrap.querySelector('#settleAmtHint');
+    const btn = wrap.querySelector('#confirmSettleAll');
+    const v = Math.round(parseFloat(amtInput.value || '0') * 100) / 100;
+    if(isNaN(v) || v <= 0){
+      if(hint){ hint.textContent = 'Enter an amount above $0.'; hint.style.color = '#a03030'; }
+      if(btn) btn.textContent = '✓ Settle';
+      return;
+    }
+    const diff = Math.round((netAbs - v) * 100) / 100;
+    const payerName = net > 0 ? other.name : me.name;
+    const payeeName = net > 0 ? me.name : other.name;
+    if(hint){
+      hint.style.color = 'var(--ink-soft)';
+      if(Math.abs(diff) < 0.01) hint.textContent = `Exact — clears everything between you and ${other.name}.`;
+      else if(diff > 0) hint.textContent = `Underpaid by $${diff.toFixed(2)} — that amount stays on the books as ${payerName} still owing ${payeeName}.`;
+      else hint.textContent = `Overpaid by $${Math.abs(diff).toFixed(2)} — that amount gets logged as ${payeeName} owing ${payerName} back.`;
+    }
+    if(btn) btn.textContent = `✓ Settle — $${v.toFixed(2)}`;
+  };
 
   const fileInput = wrap.querySelector('#settleAllFile');
   if(fileInput) fileInput.onchange = async e => {
@@ -4970,6 +5037,8 @@ function openSettleUpModal(otherId){
 
   const confirmBtn = wrap.querySelector('#confirmSettleAll');
   if(confirmBtn) confirmBtn.onclick = () => {
+    const paid = Math.round(parseFloat(amtInput?.value || '0') * 100) / 100;
+    if(isNaN(paid) || paid <= 0){ alert('Enter a settlement amount above $0.'); return; }
     const receipt = wrap.querySelector('#settleAllPreview')?.dataset?.b64 || null;
     const now = Date.now();
     // Settle all open items between the two people
@@ -4985,6 +5054,25 @@ function openSettleUpModal(otherId){
         s[currentUserId] = { settledAt: now, settledBy: currentUserId, amount: shareAmt, receiptImage: receipt };
       }
     });
+    // If the paid amount differs from the calculated net, log an adjustment expense
+    // so the leftover (or overpayment) stays on the books between the two people.
+    const diff = Math.round((netAbs - paid) * 100) / 100;
+    if(Math.abs(diff) >= 0.01){
+      const payerId = net > 0 ? otherId : currentUserId; // who was paying
+      const payeeId = net > 0 ? currentUserId : otherId; // who was receiving
+      // Underpaid → payer still owes payee the difference.
+      // Overpaid → payee now owes payer the extra back.
+      const owedBy = diff > 0 ? payerId : payeeId;
+      const owedTo = diff > 0 ? payeeId : payerId;
+      state.expenses.push({
+        id: uid(),
+        description: `⚖️ Settle-up adjustment — ${memberById(payerId)?.name || '?'} paid $${paid.toFixed(2)} of $${netAbs.toFixed(2)}`,
+        amount: Math.abs(diff),
+        paidBy: owedTo,
+        splitAmong: [owedBy],
+        createdAt: now, removed: false, removedAt: null, removedBy: null
+      });
+    }
     document.body.removeChild(wrap);
     saveState(); render();
   };
@@ -5185,6 +5273,7 @@ function renderBills(){
         <div class="sw-hero-divider"></div>
         <div class="sw-hero-col"><span class="sw-green">you are owed</span><b class="sw-green">$${totalOwedToMe.toFixed(2)}</b></div>
       </div>
+      <button class="btn" data-action="open-settle-picker" style="margin-top:12px;width:100%;background:var(--green);">💸 Settle up</button>
     </div>
 
     ${rels.length>0?`
@@ -5681,6 +5770,7 @@ function attachHandlers(){
   });
   c.querySelectorAll('[data-action="settle-share"]').forEach(el=> el.onclick = (e)=>{ e.stopPropagation(); openSettleShareModal(el.dataset.id, el.dataset.mid); });
   c.querySelectorAll('[data-action="settle-up-person"]').forEach(el=> el.onclick = (e)=>{ e.stopPropagation(); openSettleUpModal(el.dataset.id); });
+  c.querySelectorAll('[data-action="open-settle-picker"]').forEach(el=> el.onclick = (e)=>{ e.stopPropagation(); openSettlePickerModal(); });
   c.querySelectorAll('[data-action="view-receipt"]').forEach(el=> el.onclick = (e)=>{ e.stopPropagation(); viewReceiptModal(el.dataset.id, el.dataset.mid); });
   c.querySelectorAll('[data-action="toggle-expense-expand"]').forEach(el=> el.onclick = ()=>{
     expandedExpenseId = expandedExpenseId === el.dataset.id ? null : el.dataset.id;
