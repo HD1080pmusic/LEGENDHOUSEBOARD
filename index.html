@@ -619,7 +619,7 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
 #devPanel { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.55); display:none; align-items:flex-start; justify-content:center; padding:20px; overflow-y:auto; }
 #devPanelContent { background:#fff; border-radius:18px; width:100%; max-width:420px; padding:0 0 24px; box-shadow:0 16px 40px rgba(0,0,0,.35); }
 .dev-header { display:flex; align-items:center; justify-content:space-between; padding:16px 18px 12px; border-bottom:1px solid #eee; font-family:var(--pixel-font); font-size:13px; color:#222; }
-.dev-close { background:none; border:none; font-size:18px; cursor:pointer; color:#999; line-height:1; padding:0; }
+.dev-close { background:#f0f0f0; border:none; font-size:15px; font-weight:700; cursor:pointer; color:#555; border-radius:10px; padding:10px 20px; width:100%; margin-top:18px; display:block; }
 .dev-section { padding:14px 18px 0; }
 .dev-section-title { font-family:var(--pixel-font); font-size:10px; color:#888; margin-bottom:10px; letter-spacing:.04em; }
 .dev-label { display:block; font-size:11px; color:#666; margin:8px 0 4px; }
@@ -744,7 +744,7 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
   <div id="devPanel"><div id="devPanelContent"></div></div>
   <button id="devFloatBtn" title="Dev Panel (HD only)" onclick="openDevPanel()">🛠️ Dev</button>
 
-  <!-- Data restore banner — only visible when member count < 7 (after data loss) -->
+  <!-- Data restore banner — only visible when member count < 6 (Henry moved out) -->
   <div id="restoreBanner" style="display:none;background:#fff3cd;border:2px solid #f0ad4e;border-radius:12px;margin:12px 16px;padding:14px 16px;font-size:13px;color:#7a5c00;">
     <strong>⚠️ House data looks incomplete</strong> — it seems some members and progress were lost.
     Tap below to restore everyone back to their last known levels, pets, and chores.
@@ -928,8 +928,8 @@ async function checkAndRestoreIfNeeded(){
   const choreMissingData = state.chores.length < 5 ||
     state.chores.filter(ch=>ch.type==='fixed').some(ch=>!ch.assignee) ||
     state.chores.filter(ch=>ch.type==='rotating').some(ch=>!ch.rotation.turns||ch.rotation.turns.length===0);
-  if((state.members.length < 7 || choreMissingData) && !sessionStorage.getItem('restoreDeclined')){
-    const ok = confirm('⚠️ Your house data looks incomplete (' + state.members.length + ' of 7 members found).\n\nRestore everyone to their last known levels, pets and chores?\n\n• Kaitlin Lv 2 (Hero Chao / Kuromi)\n• Jimmy Lv 2 (Hell Chao / Piccolo)\n• Ryan Lv 1 half (egg / Zoro)\n• HD Lv 3 (Angel Chao / Totoro)\n• Shayla Lv 0 (egg / Hello Kitty)\n• henry Lv 1 half (egg)\n• Christi Lv 1 ⅔ (Classic Chao / Cinnamoroll)');
+  if((state.members.length < 6 || choreMissingData) && !sessionStorage.getItem('restoreDeclined')){
+    const ok = confirm('⚠️ Your house data looks incomplete (' + state.members.length + ' of 6 members found).\n\nRestore everyone to their last known levels, pets and chores?\n\n• Kaitlin Lv 2 (Hero Chao / Kuromi)\n• Jimmy Lv 2 (Hell Chao / Piccolo)\n• Ryan Lv 1 half (egg / Zoro)\n• HD Lv 3 (Angel Chao / Totoro)\n• Shayla Lv 0 (egg / Hello Kitty)\n• henry Lv 1 half (egg)\n• Christi Lv 1 ⅔ (Classic Chao / Cinnamoroll)');
     if(ok){
       syncPaused = true;
       Object.assign(state, JSON.parse(JSON.stringify(RESTORED_STATE)));
@@ -1483,7 +1483,7 @@ function renderDevPanelHTML(){
   return `
   <div class="dev-header">
     <span>🛠️ Dev Panel <span style="font-size:10px;opacity:.6">HD only</span></span>
-    <button class="dev-close" onclick="closeDevPanel()">✕</button>
+
   </div>
 
   <div class="dev-section">
@@ -1566,7 +1566,7 @@ function renderDevPanelHTML(){
       <button class="dev-btn" data-dev="forcerestore">🔄 Force Restore Dialog</button>
     </div>
     <div class="dev-row" style="margin-top:8px;">
-      <button class="dev-btn dev-btn-primary" data-dev="fixchoreweek" style="width:100%;">🔁 Fix This Week's Chores (Jul 20)</button>
+      <button class="dev-btn dev-btn-primary" data-dev="fixchoreweek" style="width:100%;">🔁 Fix This Week's Chores (Aug 3)</button>
     </div>
     <label class="dev-label" style="margin-top:10px;">Wipe a member</label>
     <div class="dev-row">
@@ -1578,6 +1578,10 @@ function renderDevPanelHTML(){
       <button class="dev-btn dev-btn-danger" data-dev="wipemember">🗑️ Wipe</button>
     </div>
     <span style="font-size:10px;color:#999;">Removes profile, all XP, and chore history. Cannot be undone.</span>
+  </div>
+
+  <div style="padding:0 18px 4px;">
+    <button class="dev-close" onclick="closeDevPanel()">✕ Close Dev Panel</button>
   </div>`;
 }
 
@@ -2228,7 +2232,7 @@ function render(){
     const choreMissingData2 = state.chores.length < 5 ||
       state.chores.filter(ch=>ch.type==='fixed').some(ch=>!ch.assignee) ||
       state.chores.filter(ch=>ch.type==='rotating').some(ch=>!ch.rotation.turns||ch.rotation.turns.length===0);
-    const needsRestore = state.members.length < 7 || choreMissingData2;
+    const needsRestore = state.members.length < 6 || choreMissingData2;
     restoreBanner.style.display = needsRestore ? 'block' : 'none';
   }
   attachHandlers();
