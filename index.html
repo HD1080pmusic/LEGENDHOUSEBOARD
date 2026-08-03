@@ -913,6 +913,31 @@ function normalizeState(){
       startOrder: ['shayla01','kaitr001','ryanr001','jimmyr01','0f1r5fjj','chrisr01'],
     };
   }
+  // Re-seed the core weekly rotation chores if they've gone missing from saved data.
+  // Without these records, applyRotationToChores() has nothing to write this week's
+  // assignments into, so the Chores tab only shows the living room + biweekly chores.
+  const CORE_ROTATION_CHORES = [
+    { id:'wazxhmic', type:'rotating', title:'Empty trash & take out bins (Thursday night, in pairs)',
+      rotation:{ intervalWeeks:1, anchorDate:'2026-08-03', turns:[[]] }, doneForPeriod:null },
+    { id:'0876gm85', type:'fixed', title:'Clean air fryer & microwave',
+      assignee:null, frequency:'weekly', dueDate:'2026-08-03', done:false },
+    { id:'gx6cz5xb', type:'fixed', title:'Empty dish dryer (daily)',
+      assignee:null, frequency:'weekly', dueDate:'2026-08-03', done:false },
+    { id:'lcmmzgcq', type:'fixed', title:'Front door & shoe organization + towel restock & laundry',
+      assignee:null, frequency:'weekly', dueDate:'2026-08-03', done:false },
+  ];
+  let reseededCore = false;
+  CORE_ROTATION_CHORES.forEach(tpl=>{
+    if(!state.chores.some(c=>c.id===tpl.id)){
+      state.chores.push(JSON.parse(JSON.stringify(tpl)));
+      reseededCore = true;
+    }
+  });
+  // Force the rotation to re-apply so the restored chores get this week's
+  // assignees right away instead of waiting for next week's turnover.
+  if(reseededCore && state.choreRotation){
+    delete state.choreRotation._appliedWeekKey;
+  }
   // Add biweekly chores if they don't exist yet
   const hasSweep = state.chores.some(c=>c.id==='sweep01');
   if(!hasSweep){
@@ -1062,6 +1087,7 @@ function startRealtimeSync(){
     try{
       state = JSON.parse(data.json);
       normalizeState();
+      applyRotationToChores(); // idempotent — fills in this week's assignees if chores were re-seeded
       renderMembersRow();
       render();
     } catch(e){ console.error('sync parse failed', e); }
