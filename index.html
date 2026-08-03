@@ -1420,48 +1420,60 @@ function devSetStreak(memberId, days){
   m.pet.streakDate = d > 0 ? new Date().toDateString() : null;
   devSave();
 }
-// One-tap fix for the chore week — corrects the anchor date sync bug and rotates fixed chore assignees
-// so nobody repeats the same chore two weeks running.
+// One-tap fix for the chore week — UPSERTS every core chore from scratch (recreates any that
+// are missing from saved data, replaces any that drifted), sets this week's assignees,
+// and verifies all 7 actually landed in Firebase before claiming success.
 async function devFixChoreWeek(){
-  if(!confirm('Set this week\'s chore assignments?\n\n🗑️  Trash → Shayla + Jimmy\n🧹  Living Room → Christi\n👟  Shoes & Towels → HD\n🍽️  Dish Dryer → Ryan\n🧼  Microwave & Airfryer → Kaitlin\n\nSaves to Firebase and reloads the page.')) return;
+  if(!confirm('Rebuild this week\'s chores from scratch?\n\n🗑️  Trash → Shayla + Jimmy\n🧼  Microwave & Airfryer → Kaitlin\n🍽️  Dish Dryer → Ryan\n👟  Shoes & Towels → HD\n🧹  Living Room → Christi\n🧽  Sweeping (biweekly) → Jimmy, Kaitlin, Ryan\n🧊  Kitchen island (biweekly) → Shayla, HD, Christi\n\nAny missing chores are recreated. Saves to Firebase and reloads the page.')) return;
 
   syncPaused = true; // prevent onSnapshot overwriting during save
 
-  // Clean up chores
-  state.chores = state.chores.filter(c=>c.id!=='hallwy01');
-  if(!state.chores.some(c=>c.id==='livroom01')){
-    state.chores.push({ id:'livroom01', type:'fixed', title:'Living room cleanup', assignee:'chrisr01', frequency:'weekly', dueDate:'2026-08-03', done:false });
-  }
-  if(!state.chores.some(c=>c.id==='sweep01')){
-    state.chores.push(
-      { id:'sweep01', type:'rotating', title:'Sweeping, vacuuming & mopping', rotation:{ intervalWeeks:2, anchorDate:'2026-08-03', turns:[['jimmyr01','kaitr001','ryanr001'],['shayla01','0f1r5fjj','chrisr01']] }, doneForPeriod:null },
-      { id:'kitch01', type:'rotating', title:'Kitchen island & fridge cleanup', rotation:{ intervalWeeks:2, anchorDate:'2026-08-03', turns:[['shayla01','0f1r5fjj','chrisr01'],['jimmyr01','kaitr001','ryanr001']] }, doneForPeriod:null }
-    );
-  }
+  // Full definitions of every chore that should exist as of Aug 3 (new house, 6 people).
+  const CHORES_AUG3 = [
+    { id:'wazxhmic', type:'rotating', title:'Empty trash & take out bins (Thursday night, in pairs)',
+      rotation:{ intervalWeeks:1, anchorDate:'2026-08-03', turns:[['shayla01','jimmyr01'],['0f1r5fjj','kaitr001']] }, doneForPeriod:null },
+    { id:'0876gm85', type:'fixed', title:'Clean air fryer & microwave',
+      assignee:'kaitr001', frequency:'weekly', dueDate:'2026-08-03', done:false },
+    { id:'gx6cz5xb', type:'fixed', title:'Empty dish dryer (daily)',
+      assignee:'ryanr001', frequency:'weekly', dueDate:'2026-08-03', done:false },
+    { id:'lcmmzgcq', type:'fixed', title:'Front door & shoe organization + towel restock & laundry',
+      assignee:'0f1r5fjj', frequency:'weekly', dueDate:'2026-08-03', done:false },
+    { id:'livroom01', type:'fixed', title:'Living room cleanup',
+      assignee:'chrisr01', frequency:'weekly', dueDate:'2026-08-03', done:false },
+    { id:'sweep01', type:'rotating', title:'Sweeping, vacuuming & mopping',
+      rotation:{ intervalWeeks:2, anchorDate:'2026-08-03', turns:[['jimmyr01','kaitr001','ryanr001'],['shayla01','0f1r5fjj','chrisr01']] }, doneForPeriod:null },
+    { id:'kitch01', type:'rotating', title:'Kitchen island & fridge cleanup',
+      rotation:{ intervalWeeks:2, anchorDate:'2026-08-03', turns:[['shayla01','0f1r5fjj','chrisr01'],['jimmyr01','kaitr001','ryanr001']] }, doneForPeriod:null },
+  ];
 
-  // Set exact assignments
-  state.chores.forEach(ch=>{
-    if(ch.id==='wazxhmic'){ ch.type='rotating'; ch.doneForPeriod=null; ch.rotation={ intervalWeeks:1, anchorDate:'2026-08-03', turns:[['shayla01','jimmyr01'],['0f1r5fjj','kaitr001']] }; }
-    if(ch.id==='livroom01'){ ch.type='fixed'; ch.assignee='chrisr01'; ch.dueDate='2026-08-03'; ch.done=false; }
-    if(ch.id==='lcmmzgcq'){  ch.type='fixed'; ch.assignee='0f1r5fjj';  ch.dueDate='2026-08-03'; ch.done=false; }
-    if(ch.id==='gx6cz5xb'){ ch.type='fixed'; ch.assignee='ryanr001';  ch.dueDate='2026-08-03'; ch.done=false; }
-    if(ch.id==='0876gm85'){ ch.type='fixed'; ch.assignee='kaitr001';  ch.dueDate='2026-08-03'; ch.done=false; }
+  // Remove chores that no longer exist in the new house
+  state.chores = state.chores.filter(c=>c.id!=='hallwy01');
+
+  // UPSERT: replace each core chore if present, recreate it from scratch if missing.
+  CHORES_AUG3.forEach(def=>{
+    const fresh = JSON.parse(JSON.stringify(def));
+    const i = state.chores.findIndex(c=>c.id===def.id);
+    if(i >= 0) state.chores[i] = fresh;
+    else state.chores.push(fresh);
   });
 
   // Update rotation config
-  if(state.choreRotation){
-    state.choreRotation.phase2 = { startDate:'2026-08-03', anchorDate:'2026-08-03', startOrder:['shayla01','kaitr001','ryanr001','jimmyr01','0f1r5fjj','chrisr01'] };
-    state.choreRotation._appliedWeekKey = '2026-08-03:0'; // mark as applied so it doesn\'t get overwritten on reload
+  if(!state.choreRotation){
+    state.choreRotation = { anchorDate:'2026-07-20', startOrder:['kaitr001','ryanr001','shayla01','0f1r5fjj','chrisr01','henryr01','jimmyr01'] };
   }
+  state.choreRotation.phase2 = { startDate:'2026-08-03', anchorDate:'2026-08-03', startOrder:['shayla01','kaitr001','ryanr001','jimmyr01','0f1r5fjj','chrisr01'] };
+  state.choreRotation._appliedWeekKey = '2026-08-03:0'; // mark as applied so it doesn\'t get overwritten on reload
 
   try{
     await saveStateStrict();
-    // Verify the write actually landed in Firebase before claiming success
+    // Verify the write actually landed in Firebase before claiming success —
+    // check that ALL 7 chores exist remotely, not just the week marker.
     const snap = await getDoc(stateDocRef);
     const remote = (snap.exists() && snap.data().json) ? JSON.parse(snap.data().json) : null;
-    const landed = remote && remote.choreRotation && remote.choreRotation._appliedWeekKey === '2026-08-03:0';
-    if(!landed) throw new Error('The write did not persist — Firebase rejected or dropped it.');
-    alert('✅ Verified: chores are saved in Firebase. Reloading now...');
+    const remoteIds = new Set((remote && Array.isArray(remote.chores)) ? remote.chores.map(c=>c.id) : []);
+    const missing = CHORES_AUG3.filter(d=>!remoteIds.has(d.id)).map(d=>d.title);
+    if(missing.length) throw new Error('These chores did not persist to Firebase: ' + missing.join(', '));
+    alert('✅ Verified: all ' + CHORES_AUG3.length + ' chores are saved in Firebase. Reloading now...');
     location.reload();
   } catch(e){
     alert('❌ Chores were NOT saved.\n\nReason: ' + e.message + '\n\nCommon causes:\n• Opening the app as a local file instead of the hosted URL\n• House data over the 1MB Firebase limit (check Dev panel → Data Tools for size)');
