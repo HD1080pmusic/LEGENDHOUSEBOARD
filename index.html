@@ -1282,15 +1282,16 @@ function devSetStreak(memberId, days){
 }
 // One-tap fix for the chore week — corrects the anchor date sync bug and rotates fixed chore assignees
 // so nobody repeats the same chore two weeks running.
-function devFixChoreWeek(){
-  if(!confirm('Set this week\'s chore assignments?\n\n🗑️  Trash → Shayla + Jimmy\n🧹  Living Room → Christi\n👟  Shoes & Towels → HD\n🍽️  Dish Dryer → Ryan\n🧼  Microwave & Airfryer → Kaitlin\n\nSaves to Firebase immediately.')) return;
+async function devFixChoreWeek(){
+  if(!confirm('Set this week\'s chore assignments?\n\n🗑️  Trash → Shayla + Jimmy\n🧹  Living Room → Christi\n👟  Shoes & Towels → HD\n🍽️  Dish Dryer → Ryan\n🧼  Microwave & Airfryer → Kaitlin\n\nSaves to Firebase and reloads the page.')) return;
 
-  // Remove hallway, add living room if needed
+  syncPaused = true; // prevent onSnapshot overwriting during save
+
+  // Clean up chores
   state.chores = state.chores.filter(c=>c.id!=='hallwy01');
   if(!state.chores.some(c=>c.id==='livroom01')){
     state.chores.push({ id:'livroom01', type:'fixed', title:'Living room cleanup', assignee:'chrisr01', frequency:'weekly', dueDate:'2026-08-03', done:false });
   }
-  // Add biweekly chores if missing
   if(!state.chores.some(c=>c.id==='sweep01')){
     state.chores.push(
       { id:'sweep01', type:'rotating', title:'Sweeping, vacuuming & mopping', rotation:{ intervalWeeks:2, anchorDate:'2026-08-03', turns:[['jimmyr01','kaitr001','ryanr001'],['shayla01','0f1r5fjj','chrisr01']] }, doneForPeriod:null },
@@ -1298,31 +1299,29 @@ function devFixChoreWeek(){
     );
   }
 
-  // Set exact chore assignments for this week
+  // Set exact assignments
   state.chores.forEach(ch=>{
-    if(ch.id==='wazxhmic'){ // Trash — Shayla + Jimmy together
-      ch.type='rotating'; ch.doneForPeriod=null;
-      ch.rotation={ intervalWeeks:1, anchorDate:'2026-08-03', turns:[['shayla01','jimmyr01'],['0f1r5fjj','kaitr001']] };
-    }
+    if(ch.id==='wazxhmic'){ ch.type='rotating'; ch.doneForPeriod=null; ch.rotation={ intervalWeeks:1, anchorDate:'2026-08-03', turns:[['shayla01','jimmyr01'],['0f1r5fjj','kaitr001']] }; }
     if(ch.id==='livroom01'){ ch.type='fixed'; ch.assignee='chrisr01'; ch.dueDate='2026-08-03'; ch.done=false; }
     if(ch.id==='lcmmzgcq'){  ch.type='fixed'; ch.assignee='0f1r5fjj';  ch.dueDate='2026-08-03'; ch.done=false; }
     if(ch.id==='gx6cz5xb'){ ch.type='fixed'; ch.assignee='ryanr001';  ch.dueDate='2026-08-03'; ch.done=false; }
     if(ch.id==='0876gm85'){ ch.type='fixed'; ch.assignee='kaitr001';  ch.dueDate='2026-08-03'; ch.done=false; }
   });
 
-  // Update rotation config so weekly auto-shift works going forward
+  // Update rotation config
   if(state.choreRotation){
-    state.choreRotation.phase2 = {
-      startDate:  '2026-08-03',
-      anchorDate: '2026-08-03',
-      startOrder: ['shayla01','kaitr001','ryanr001','jimmyr01','0f1r5fjj','chrisr01'],
-      //  slot:      Trash1     Microwave  DishDryer  Trash2    Shoes      LivingRoom
-    };
-    state.choreRotation._appliedWeekKey = null;
+    state.choreRotation.phase2 = { startDate:'2026-08-03', anchorDate:'2026-08-03', startOrder:['shayla01','kaitr001','ryanr001','jimmyr01','0f1r5fjj','chrisr01'] };
+    state.choreRotation._appliedWeekKey = '2026-08-03:0'; // mark as applied so it doesn\'t get overwritten on reload
   }
-  devSave();
-  alert('✅ Chores set! Shayla+Jimmy=Trash, Christi=Living Room, HD=Shoes, Ryan=Dishwasher, Kaitlin=Microwave.');
-}
+
+  try{
+    await saveState();
+    alert('✅ Chores saved! Reloading now...');
+    location.reload();
+  } catch(e){
+    alert('❌ Save failed: ' + e.message + '\nMake sure you\'re on the hosted URL, not a local file.');
+    syncPaused = false;
+  }
 function devAddMess(memberId){
   const m = memberById(memberId); if(!m) return;
   ensurePet(m);
@@ -5486,6 +5485,7 @@ function attachHandlers(){
   });
 }
 
+}
 init();
 </script>
 </body>
