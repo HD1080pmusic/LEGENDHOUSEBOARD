@@ -1021,14 +1021,22 @@ async function loadState(){
   normalizeState();
   // note: restore dialog moved to init(), AFTER the app is revealed
 }
+const FIRESTORE_DOC_LIMIT = 980000; // stay under Firestore's hard 1 MiB per-document cap
+function stateJsonSizeKb(){ return Math.round(JSON.stringify(state).length/1024); }
 async function saveState(){
-  try{
-    await Promise.race([
-      setDoc(stateDocRef, { json: JSON.stringify(state), updatedAt: Date.now() }),
-      new Promise((_,rej)=> setTimeout(()=> rej(new Error('Firebase save timed out')), 6000))
-    ]);
+  try{ await saveStateStrict(); return true; }
+  catch(e){ console.error('save failed', e); return false; }
+}
+// Throws on any failure so callers can actually detect a failed write.
+async function saveStateStrict(){
+  const json = JSON.stringify(state);
+  if(json.length > FIRESTORE_DOC_LIMIT){
+    throw new Error('House data is too large to save ('+Math.round(json.length/1024)+' KB — Firebase limit is ~1000 KB). Remove large attachments in Rules & Docs or expense receipts, then try again.');
   }
-  catch(e){ console.error('save failed', e); }
+  await Promise.race([
+    setDoc(stateDocRef, { json, updatedAt: Date.now() }),
+    new Promise((_,rej)=> setTimeout(()=> rej(new Error('Firebase save timed out — check your connection.')), 20000))
+  ]);
 }
 async function checkAndRestoreIfNeeded(){
   if(state.members.length < 7 && !sessionStorage.getItem('restoreDeclined')){
@@ -1036,8 +1044,8 @@ async function checkAndRestoreIfNeeded(){
     if(ok){
       syncPaused = true;
       Object.assign(state, JSON.parse(JSON.stringify(RESTORED_STATE)));
-      try{ await saveState(); alert('✅ Data restored! Reloading now.'); location.reload(); }
-      catch(e){ alert('❌ Save failed: '+e.message+'\nTry again.'); syncPaused = false; }
+      try{ await saveStateStrict(); alert('✅ Data restored! Reloading now.'); location.reload(); }
+      catch(e){ alert('❌ Restore was NOT saved: '+e.message); syncPaused = false; }
     } else {
       // user declined — don't prompt again this session
       sessionStorage.setItem('restoreDeclined','1');
@@ -1312,8 +1320,8 @@ async function restoreHouseData(){
   syncPaused = true;
   Object.assign(state, JSON.parse(JSON.stringify(RESTORED_STATE)));
   render();
-  try{ await saveState(); alert('✅ Restored! Reloading now.'); location.reload(); }
-  catch(e){ alert('❌ Save failed: '+e.message+'\nCheck connection and try again.'); syncPaused = false; }
+  try{ await saveStateStrict(); alert('✅ Restored! Reloading now.'); location.reload(); }
+  catch(e){ alert('❌ Restore was NOT saved: '+e.message); syncPaused = false; }
 }
 window.restoreHouseData = restoreHouseData;
 
@@ -1421,11 +1429,16 @@ async function devFixChoreWeek(){
   }
 
   try{
-    await saveState();
-    alert('✅ Chores saved! Reloading now...');
+    await saveStateStrict();
+    // Verify the write actually landed in Firebase before claiming success
+    const snap = await getDoc(stateDocRef);
+    const remote = (snap.exists() && snap.data().json) ? JSON.parse(snap.data().json) : null;
+    const landed = remote && remote.choreRotation && remote.choreRotation._appliedWeekKey === '2026-08-03:0';
+    if(!landed) throw new Error('The write did not persist — Firebase rejected or dropped it.');
+    alert('✅ Verified: chores are saved in Firebase. Reloading now...');
     location.reload();
   } catch(e){
-    alert('❌ Save failed: ' + e.message + '\nMake sure you\'re on the hosted URL, not a local file.');
+    alert('❌ Chores were NOT saved.\n\nReason: ' + e.message + '\n\nCommon causes:\n• Opening the app as a local file instead of the hosted URL\n• House data over the 1MB Firebase limit (check Dev panel → Data Tools for size)');
     syncPaused = false;
   }
 }
@@ -1686,6 +1699,11 @@ function renderDevPanelHTML(){
 
   <div class="dev-section">
     <div class="dev-section-title">💾 Data Tools</div>
+    ${(()=>{ const kb = stateJsonSizeKb(); const pct = Math.min(100, Math.round(kb/10)); const danger = kb > 900;
+      return `<div style="margin-bottom:10px;">
+        <div style="font-size:11px;color:${danger?'#c0392b':'#666'};margin-bottom:3px;">House data size: <b>${kb} KB</b> / ~1000 KB Firebase limit${danger?' ⚠️ TOO BIG — saves will fail!':''}</div>
+        <div style="height:6px;background:#eee;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:${danger?'#c0392b':kb>700?'#e8641e':'#1a9c74'};"></div></div>
+      </div>`; })()}
     <div class="dev-row">
       <button class="dev-btn" data-dev="exportjson">📤 Export JSON Backup</button>
       <button class="dev-btn" data-dev="forcerestore">🔄 Force Restore Dialog</button>
@@ -5271,7 +5289,7 @@ function openRuleModal(existing){
         <div><label>Details <span style="font-weight:400;color:var(--ink-soft);font-size:11px;">(optional if attaching a file)</span></label>
           <textarea id="ruleContent" rows="4" placeholder="e.g. Network: HouseNet — Password: ...">${isEdit?escapeHtml(existing.content||''): ''}</textarea></div>
         <div>
-          <label>Attach a file <span style="font-weight:400;color:var(--ink-soft);font-size:11px;">PDF, image, or any file — up to ~4 MB</span></label>
+          <label>Attach a file <span style="font-weight:400;color:var(--ink-soft);font-size:11px;">PDF, image, or any file — keep under 600 KB (photos auto-compress)</span></label>
           <input type="file" id="ruleFile" accept="*/*" style="margin-top:6px;width:100%;font-size:12px;">
           <div id="ruleFilePreview" style="margin-top:8px;">${isEdit&&existing.fileName?`<span style="font-size:12px;color:var(--ink-soft);">📎 Current: ${escapeHtml(existing.fileName)} <button id="clearAttachment" style="font-size:11px;background:none;border:none;color:var(--danger);cursor:pointer;">Remove</button></span>`:''}
           </div>
@@ -5296,6 +5314,11 @@ function openRuleModal(existing){
   wrap.querySelector('#ruleFile').onchange = async e=>{
     const file = e.target.files[0]; if(!file) return;
     const preview = wrap.querySelector('#ruleFilePreview');
+    if(!file.type.startsWith('image/') && file.size > 600*1024){
+      preview.innerHTML = '<span style="font-size:11px;color:var(--danger);">File too large ('+Math.round(file.size/1024)+' KB). Keep attachments under 600 KB — everything lives in one 1MB Firebase document. Tip: compress the PDF or attach a photo of it instead.</span>';
+      e.target.value = '';
+      return;
+    }
     preview.innerHTML = '<span style="font-size:11px;color:var(--ink-soft);">Loading…</span>';
     try{
       let data;
