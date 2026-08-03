@@ -833,8 +833,8 @@ function normalizeState(){
   // Seed phase2 (Aug 3 transition) if missing from older saves
   if(state.choreRotation && !state.choreRotation.phase2){
     state.choreRotation.phase2 = {
-      startDate:  '2026-08-02',
-      anchorDate: '2026-08-02',
+      startDate:  '2026-08-03',
+      anchorDate: '2026-08-03',
       startOrder: ['jimmyr01','kaitr001','ryanr001','shayla01','0f1r5fjj','chrisr01'],
     };
   }
@@ -850,7 +850,7 @@ function normalizeState(){
   }
   // Add living room chore if missing (new house)
   if(!state.chores.some(c=>c.id==='livroom01')){
-    state.chores.push({ id:'livroom01', type:'fixed', title:'Living room cleanup', assignee:'chrisr01', frequency:'weekly', dueDate:'2026-08-02', done:false });
+    state.chores.push({ id:'livroom01', type:'fixed', title:'Living room cleanup', assignee:'chrisr01', frequency:'weekly', dueDate:'2026-08-03', done:false });
   }
   // Remove hallway chore — not in the new house
   state.chores = state.chores.filter(c=>c.id!=='hallwy01');
@@ -1133,7 +1133,7 @@ const RESTORED_STATE = {
     { id:'lcmmzgcq', type:'fixed', title:'Front door & shoe organization + towel restock & laundry', assignee:'chrisr01', frequency:'weekly', dueDate:'2026-07-20', done:false },
     // (Hallway removed — new house does not have this chore)
     // Living Room Cleanup — in the 6-person weekly rotation
-    { id:'livroom01', type:'fixed', title:'Living room cleanup', assignee:'chrisr01', frequency:'weekly', dueDate:'2026-08-02', done:false },
+    { id:'livroom01', type:'fixed', title:'Living room cleanup', assignee:'chrisr01', frequency:'weekly', dueDate:'2026-08-03', done:false },
     // ── Biweekly chores starting Aug 3 (6 people split into 2 groups of 3) ──────────
     // Sweeping, vacuuming & mopping — 3 people per biweek, groups alternate
     { id:'sweep01', type:'rotating', title:'Sweeping, vacuuming & mopping',
@@ -1192,8 +1192,8 @@ const RESTORED_STATE = {
     //  slot:       Trash1     Microwave  DishDry1  Trash2     Shoes      Hallway    DishDry2
     // Aug 3: Henry leaves, hallway removed → 6-person rotation picks up naturally
     phase2: {
-      startDate:   '2026-08-02',
-      anchorDate:  '2026-08-02',
+      startDate:   '2026-08-03',
+      anchorDate:  '2026-08-03',
       startOrder:  ['jimmyr01','kaitr001','ryanr001','shayla01','0f1r5fjj','chrisr01'],
       //  slot:      Trash1     Microwave  DishDryer  Trash2    Shoes      LivingRoom
     },
@@ -1285,19 +1285,19 @@ function devFixChoreWeek(){
   if(!confirm('Apply new house rotation now?\n\n• Trash 1 → Jimmy\n• Microwave → Kaitlin\n• Dish Dryer → Ryan\n• Trash 2 → Shayla\n• Shoes/towels → HD\n• Living Room → Christi\n• Hallway removed\n\nThis saves to Firebase immediately.')) return;
   state.chores = state.chores.filter(c=>c.id!=='hallwy01');
   if(!state.chores.some(c=>c.id==='livroom01')){
-    state.chores.push({ id:'livroom01', type:'fixed', title:'Living room cleanup', assignee:'chrisr01', frequency:'weekly', dueDate:'2026-08-02', done:false });
+    state.chores.push({ id:'livroom01', type:'fixed', title:'Living room cleanup', assignee:'chrisr01', frequency:'weekly', dueDate:'2026-08-03', done:false });
   }
   const fixes = {
-    'wazxhmic': { type:'rotating', rotation:{ intervalWeeks:1, anchorDate:'2026-08-02', turns:[['jimmyr01','shayla01'],['kaitr001','0f1r5fjj']] }, doneForPeriod:null },
-    '0876gm85': { type:'fixed', assignee:'kaitr001', dueDate:'2026-08-02', done:false },
-    'gx6cz5xb': { type:'fixed', assignee:'ryanr001', dueDate:'2026-08-02', done:false },
-    'lcmmzgcq': { type:'fixed', assignee:'0f1r5fjj', dueDate:'2026-08-02', done:false },
-    'livroom01': { type:'fixed', assignee:'chrisr01', dueDate:'2026-08-02', done:false },
+    'wazxhmic': { type:'rotating', rotation:{ intervalWeeks:1, anchorDate:'2026-08-03', turns:[['jimmyr01','shayla01'],['kaitr001','0f1r5fjj']] }, doneForPeriod:null },
+    '0876gm85': { type:'fixed', assignee:'kaitr001', dueDate:'2026-08-03', done:false },
+    'gx6cz5xb': { type:'fixed', assignee:'ryanr001', dueDate:'2026-08-03', done:false },
+    'lcmmzgcq': { type:'fixed', assignee:'0f1r5fjj', dueDate:'2026-08-03', done:false },
+    'livroom01': { type:'fixed', assignee:'chrisr01', dueDate:'2026-08-03', done:false },
   };
   state.chores.forEach(ch=>{ const fix=fixes[ch.id]; if(fix) Object.assign(ch,fix); });
   if(state.choreRotation){
-    state.choreRotation.phase2 = { startDate:'2026-08-02', anchorDate:'2026-08-02', startOrder:['jimmyr01','kaitr001','ryanr001','shayla01','0f1r5fjj','chrisr01'] };
-    state.choreRotation._appliedWeekKey = null;
+    state.choreRotation.phase2 = { startDate:'2026-08-03', anchorDate:'2026-08-03', startOrder:['jimmyr01','kaitr001','ryanr001','shayla01','0f1r5fjj','chrisr01'] };
+    state.choreRotation._appliedWeekKey = null; // force refresh Aug 3
   }
   devSave();
   alert('✅ New house rotation is live! Hallway gone, Living Room added.');
@@ -2275,7 +2275,7 @@ const ROTATION_SLOTS_P2 = [
   { label:'Shoes & Towels',      choreId:'lcmmzgcq' },
   { label:'Living Room Cleanup', choreId:'livroom01' },
 ];
-const PHASE2_START = '2026-08-02'; // new house — kicks in now
+const PHASE2_START = '2026-08-03'; // new house — kicks in now
 
 function addWeeks(dateStr, n){
   const d = new Date(dateStr+'T00:00:00');
