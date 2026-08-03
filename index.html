@@ -150,6 +150,7 @@ body{
 .tab[data-tab="chores"].active{border-bottom-color:var(--green);}
 .tab[data-tab="reminders"].active{border-bottom-color:var(--orange);}
 .tab[data-tab="bills"].active{border-bottom-color:var(--teal);}
+.tab[data-tab="money"].active{border-bottom-color:var(--green);}
 .tab[data-tab="rules"].active{border-bottom-color:var(--pink);}
 .tab[data-tab="pet"].active{border-bottom-color:var(--gold);}
 
@@ -804,13 +805,14 @@ label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-
 
   <div class="tabs" id="tabs">
     <button class="tab" data-tab="dashboard">📊 Dashboard</button>
+    <button class="tab" data-tab="chores">🧹 Chores</button>
+    <button class="tab" data-tab="bills">💵 Bills</button>
+    <button class="tab" data-tab="money">💰 Money</button>
+    <button class="tab" data-tab="pet">🐾 Pet</button>
     <button class="tab" data-tab="calendar">📅 Calendar</button>
     <button class="tab" data-tab="grocery">🛒 Grocery</button>
-    <button class="tab" data-tab="chores">🧹 Chores</button>
     <button class="tab" data-tab="reminders">⏰ Reminders</button>
-    <button class="tab" data-tab="bills">💵 Bills</button>
     <button class="tab" data-tab="rules">📋 Rules</button>
-    <button class="tab" data-tab="pet">🐾 Pet</button>
   </div>
 
   <div id="content"></div>
@@ -850,7 +852,7 @@ const GOOGLE_CLIENT_ID = '526800085021-vbk4amkfvfrh2frao81gb771ob3rh46v.apps.goo
 const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
 
 const MARKER_COLORS = ['#2E78C9','#3FA86B','#E0508B','#F2962E','#8C5FD1','#1FA3A3'];
-let state = { members: [], chores: [], events: [], reminders: [], expenses: [], dayPhotos: {}, houseRules: [], groceryItems: [], completionLog: [], taskAssignLog: [], xpLog: [], weeklyScorecard: [] };
+let state = { members: [], chores: [], events: [], reminders: [], expenses: [], dayPhotos: {}, houseRules: [], groceryItems: [], completionLog: [], taskAssignLog: [], xpLog: [], weeklyScorecard: [], financeEntries: [] };
 let pendingPhotoDate = null;
 let googleCardCollapsed = true;
 try{ const stored = localStorage.getItem('house-board-google-collapsed'); if(stored!==null) googleCardCollapsed = stored==='true'; }catch(e){}
@@ -898,6 +900,7 @@ function normalizeState(){
   if(!Array.isArray(state.groceryItems)) state.groceryItems = [];
   if(!Array.isArray(state.xpLog)) state.xpLog = [];
   if(!Array.isArray(state.weeklyScorecard)) state.weeklyScorecard = [];
+  if(!Array.isArray(state.financeEntries)) state.financeEntries = [];
   // Seed the global rotation config if this is an existing house that doesn't have it yet
   if(!state.choreRotation){
     state.choreRotation = {
@@ -2408,6 +2411,7 @@ function render(){
   else if(activeTab==='calendar') c.innerHTML = renderCalendar();
   else if(activeTab==='reminders') c.innerHTML = renderReminders();
   else if(activeTab==='bills') c.innerHTML = renderBills();
+  else if(activeTab==='money') c.innerHTML = renderMoney();
   else if(activeTab==='rules') c.innerHTML = renderRules();
   else if(activeTab==='pet') c.innerHTML = renderPetTab();
   // Show/hide dev float button — only for HD
@@ -5330,6 +5334,152 @@ function renderBills(){
   `;
 }
 
+/* ---------- MY MONEY: personal expense & income tracker ---------- */
+let moneyMonth = null; // 'YYYY-MM' currently being viewed
+
+function moneyMonthKey(){
+  if(!moneyMonth) moneyMonth = todayStr().slice(0,7);
+  return moneyMonth;
+}
+function shiftMoneyMonth(delta){
+  const [y,m] = moneyMonthKey().split('-').map(Number);
+  const d = new Date(y, m-1+delta, 1);
+  moneyMonth = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+}
+function moneyChartSvg(days, daysInMonth, monShort){
+  const maxSpend = Math.max(10, ...days.map(d=>d.cash+d.card));
+  const W=700, H=240, padL=48, padR=10, padT=18, padB=28;
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const bw = plotW/daysInMonth;
+  const yFor = v => padT + plotH - (v/maxSpend)*plotH;
+  let grid='', bars='', dots='', xlabels='';
+  for(let g=0; g<=4; g++){
+    const v = maxSpend*g/4, gy = yFor(v);
+    grid += `<line x1="${padL}" y1="${gy}" x2="${W-padR}" y2="${gy}" stroke="#e8e4d8" stroke-width="1"/>
+             <text x="${padL-6}" y="${gy+3}" text-anchor="end" font-size="9" fill="#8a8578">$${v>=100?Math.round(v):v.toFixed(0)}</text>`;
+  }
+  days.forEach((d,i)=>{
+    const x = padL + i*bw + bw*0.16, w = Math.max(2, bw*0.68);
+    let yTop = yFor(d.cash + d.card);
+    if(d.card > 0){
+      const h = (d.card/maxSpend)*plotH;
+      bars += `<rect x="${x.toFixed(1)}" y="${yTop.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="1.5" fill="var(--purple)"><title>${monShort} ${i+1} — card: $${d.card.toFixed(2)}</title></rect>`;
+      yTop += h;
+    }
+    if(d.cash > 0){
+      const h = (d.cash/maxSpend)*plotH;
+      bars += `<rect x="${x.toFixed(1)}" y="${yTop.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="1.5" fill="var(--green)"><title>${monShort} ${i+1} — cash: $${d.cash.toFixed(2)}</title></rect>`;
+    }
+    if(d.income > 0){
+      dots += `<circle cx="${(padL + i*bw + bw/2).toFixed(1)}" cy="${padT-8}" r="3.5" fill="var(--orange)"><title>${monShort} ${i+1} — income: $${d.income.toFixed(2)}</title></circle>`;
+    }
+    if((i+1)===1 || (i+1)%5===0){
+      xlabels += `<text x="${(padL + i*bw + bw/2).toFixed(1)}" y="${H-10}" text-anchor="middle" font-size="9" fill="#8a8578">${i+1}</text>`;
+    }
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;" xmlns="http://www.w3.org/2000/svg">
+    ${grid}${bars}${dots}${xlabels}
+  </svg>
+  <div style="display:flex;gap:14px;justify-content:center;font-size:10px;color:var(--ink-soft);margin-top:4px;flex-wrap:wrap;">
+    <span><span style="display:inline-block;width:9px;height:9px;background:var(--purple);border-radius:2px;vertical-align:-1px;"></span> Card</span>
+    <span><span style="display:inline-block;width:9px;height:9px;background:var(--green);border-radius:2px;vertical-align:-1px;"></span> Cash</span>
+    <span><span style="display:inline-block;width:9px;height:9px;background:var(--orange);border-radius:99px;vertical-align:-1px;"></span> Income day</span>
+  </div>`;
+}
+function renderMoney(){
+  if(!currentUserId) return `<div class="card"><h3>💰 My Money</h3><div class="empty">Pick who you are first (tap your avatar in the top bar) — this tracker is personal to each housemate.</div></div>`;
+  const mk = moneyMonthKey();
+  const [y, mo] = mk.split('-').map(Number);
+  const daysInMonth = new Date(y, mo, 0).getDate();
+  const monthDate = new Date(y, mo-1, 1);
+  const monthLabel = monthDate.toLocaleDateString(undefined,{month:'long',year:'numeric'});
+  const monShort = monthDate.toLocaleDateString(undefined,{month:'short'});
+
+  const mine = (state.financeEntries||[]).filter(e => e.memberId===currentUserId && e.date && e.date.slice(0,7)===mk);
+  const spentCash = mine.filter(e=>e.kind==='expense' && e.method==='cash').reduce((s,e)=>s+e.amount,0);
+  const spentCard = mine.filter(e=>e.kind==='expense' && e.method!=='cash').reduce((s,e)=>s+e.amount,0);
+  const spent = spentCash + spentCard;
+  const earned = mine.filter(e=>e.kind==='income').reduce((s,e)=>s+e.amount,0);
+  const net = earned - spent;
+
+  // Per-day totals for the chart
+  const days = Array.from({length:daysInMonth}, ()=>({ cash:0, card:0, income:0 }));
+  mine.forEach(e=>{
+    const d = Number(e.date.slice(8,10)) - 1;
+    if(d < 0 || d >= daysInMonth) return;
+    if(e.kind==='income') days[d].income += e.amount;
+    else if(e.method==='cash') days[d].cash += e.amount;
+    else days[d].card += e.amount;
+  });
+
+  const sorted = [...mine].sort((a,b)=> b.date.localeCompare(a.date) || (b.createdAt||0)-(a.createdAt||0));
+
+  return `
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <button class="btn ghost" data-action="money-prev" style="min-width:42px;padding:6px 10px;">‹</button>
+        <h3 style="margin:0;text-align:center;">💰 ${monthLabel}</h3>
+        <button class="btn ghost" data-action="money-next" style="min-width:42px;padding:6px 10px;">›</button>
+      </div>
+      <p style="font-size:11px;color:var(--ink-soft);text-align:center;margin:6px 0 12px;">Your personal money tracker — separate from the shared house Bills tab.</p>
+      <div style="display:flex;text-align:center;">
+        <div style="flex:1;"><div style="font-size:10px;color:var(--ink-soft);">INCOME</div><div style="font-size:18px;font-weight:800;color:#1a7a3e;">+$${earned.toFixed(2)}</div></div>
+        <div style="width:1px;background:var(--line);"></div>
+        <div style="flex:1;"><div style="font-size:10px;color:var(--ink-soft);">SPENT</div><div style="font-size:18px;font-weight:800;color:#d9480f;">−$${spent.toFixed(2)}</div></div>
+        <div style="width:1px;background:var(--line);"></div>
+        <div style="flex:1;"><div style="font-size:10px;color:var(--ink-soft);">NET</div><div style="font-size:18px;font-weight:800;color:${net>=0?'#1a7a3e':'#d9480f'};">${net>=0?'+':'−'}$${Math.abs(net).toFixed(2)}</div></div>
+      </div>
+      <div style="display:flex;gap:14px;justify-content:center;font-size:11px;color:var(--ink-soft);margin-top:8px;">
+        <span>💳 Card: <b>$${spentCard.toFixed(2)}</b></span>
+        <span>💵 Cash: <b>$${spentCash.toFixed(2)}</b></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>📈 Spending by day</h3>
+      ${mine.length===0
+        ? `<div class="empty">Nothing logged for ${monthLabel} yet — add your first expense or income below.</div>`
+        : moneyChartSvg(days, daysInMonth, monShort)}
+    </div>
+
+    <div class="card">
+      <h3>➕ Add expense or income</h3>
+      <div class="chip-select" id="moneyKindChips">
+        <div class="chip active" data-kind="expense">💸 Expense</div>
+        <div class="chip" data-kind="income">💰 Income</div>
+      </div>
+      <div id="moneyMethodWrap" style="margin-top:10px;">
+        <label style="font-size:12px;color:var(--ink-soft);">Paid with</label>
+        <div class="chip-select" id="moneyMethodChips" style="margin-top:4px;">
+          <div class="chip active" data-method="card">💳 Card</div>
+          <div class="chip" data-method="cash">💵 Cash</div>
+        </div>
+      </div>
+      <div class="form-grid" style="margin-top:10px;">
+        <div class="form-row">
+          <div><label>What for</label><input id="moneyDesc" placeholder="e.g. Gas, groceries, paycheck"></div>
+          <div><label>Amount ($)</label><input id="moneyAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
+        </div>
+        <div><label>Date</label><input id="moneyDate" type="date" value="${todayStr()}"></div>
+      </div>
+      <button class="btn" data-action="add-money-entry">Add</button>
+    </div>
+
+    <div class="card">
+      <h3>🧾 ${monthLabel} entries</h3>
+      ${sorted.length===0 ? `<div class="empty">No entries this month.</div>` : sorted.map(e=>`
+        <div class="row">
+          <div class="row-main">
+            <b>${e.kind==='income'?'💰':(e.method==='cash'?'💵':'💳')} ${escapeHtml(e.description)}</b>
+            <div class="row-sub">${e.date} · ${e.kind==='income'?'income':(e.method==='cash'?'cash':'card')}</div>
+          </div>
+          <span class="balance-amt" style="color:${e.kind==='income'?'#1a7a3e':'#d9480f'};">${e.kind==='income'?'+':'−'}$${e.amount.toFixed(2)}</span>
+          <button class="icon-btn" data-action="delete-money-entry" data-id="${e.id}" title="Delete entry">✕</button>
+        </div>`).join('')}
+    </div>
+  `;
+}
+
 /* ---------- HOUSE RULES & DOCS ---------- */
 let rulesSortMode = 'pinned'; // 'pinned' | 'recent'
 
@@ -5771,6 +5921,44 @@ function attachHandlers(){
   c.querySelectorAll('[data-action="settle-share"]').forEach(el=> el.onclick = (e)=>{ e.stopPropagation(); openSettleShareModal(el.dataset.id, el.dataset.mid); });
   c.querySelectorAll('[data-action="settle-up-person"]').forEach(el=> el.onclick = (e)=>{ e.stopPropagation(); openSettleUpModal(el.dataset.id); });
   c.querySelectorAll('[data-action="open-settle-picker"]').forEach(el=> el.onclick = (e)=>{ e.stopPropagation(); openSettlePickerModal(); });
+
+  // ── My Money tab ──
+  c.querySelectorAll('#moneyKindChips .chip').forEach(chip=> chip.onclick = ()=>{
+    c.querySelectorAll('#moneyKindChips .chip').forEach(x=> x.classList.remove('active'));
+    chip.classList.add('active');
+    const mw = c.querySelector('#moneyMethodWrap');
+    if(mw) mw.style.display = chip.dataset.kind==='expense' ? 'block' : 'none';
+  });
+  c.querySelectorAll('#moneyMethodChips .chip').forEach(chip=> chip.onclick = ()=>{
+    c.querySelectorAll('#moneyMethodChips .chip').forEach(x=> x.classList.remove('active'));
+    chip.classList.add('active');
+  });
+  const moneyPrev = c.querySelector('[data-action="money-prev"]');
+  if(moneyPrev) moneyPrev.onclick = ()=>{ shiftMoneyMonth(-1); render(); };
+  const moneyNext = c.querySelector('[data-action="money-next"]');
+  if(moneyNext) moneyNext.onclick = ()=>{ shiftMoneyMonth(1); render(); };
+  const addMoneyBtn = c.querySelector('[data-action="add-money-entry"]');
+  if(addMoneyBtn) addMoneyBtn.onclick = ()=>{
+    if(!currentUserId){ alert('Pick who you are first (tap your avatar in the top bar).'); return; }
+    const kind = c.querySelector('#moneyKindChips .chip.active')?.dataset.kind || 'expense';
+    const method = c.querySelector('#moneyMethodChips .chip.active')?.dataset.method || 'card';
+    const description = c.querySelector('#moneyDesc').value.trim();
+    const amount = Math.round(parseFloat(c.querySelector('#moneyAmount').value) * 100) / 100;
+    const date = c.querySelector('#moneyDate').value || todayStr();
+    if(!description){ alert('What was it for?'); return; }
+    if(isNaN(amount) || amount <= 0){ alert('Enter an amount above $0.'); return; }
+    state.financeEntries.push({ id:uid(), memberId:currentUserId, kind, method: kind==='expense' ? method : null, description, amount, date, createdAt:Date.now() });
+    moneyMonth = date.slice(0,7); // jump the view to the month you just logged into
+    saveState(); render();
+  };
+  c.querySelectorAll('[data-action="delete-money-entry"]').forEach(el=> el.onclick = (e)=>{
+    e.stopPropagation();
+    const entry = state.financeEntries.find(x=>x.id===el.dataset.id);
+    if(!entry || entry.memberId !== currentUserId) return; // only your own entries
+    if(!confirm('Delete this entry?')) return;
+    state.financeEntries = state.financeEntries.filter(x=>x.id!==el.dataset.id);
+    saveState(); render();
+  });
   c.querySelectorAll('[data-action="view-receipt"]').forEach(el=> el.onclick = (e)=>{ e.stopPropagation(); viewReceiptModal(el.dataset.id, el.dataset.mid); });
   c.querySelectorAll('[data-action="toggle-expense-expand"]').forEach(el=> el.onclick = ()=>{
     expandedExpenseId = expandedExpenseId === el.dataset.id ? null : el.dataset.id;
